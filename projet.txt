@@ -1,0 +1,597 @@
+src/main/java/com/network/projet/ussd/
+│
+├── NetworkProjetUssdApplication.java
+│   └── Rôle: Point d'entrée Spring Boot
+│   └── Appelle: Rien directement
+│   └── Méthodes utiles: main()
+│
+├── config/
+│   ├── WebClientConfig.java
+│   │   └── Rôle: Configuration du WebClient pour appels API externes
+│   │   └── Appelle: Rien
+│   │   └── Méthodes utiles: webClient() → Bean utilisé par ApiInvoker
+│   │
+│   └── R2dbcConfig.java (SI MANQUANT)
+│       └── Rôle: Configuration R2DBC pour PostgreSQL réactif
+│       └── Appelle: Rien
+│       └── Méthodes utiles: connectionFactory()
+│
+├── controller/
+│   ├── UssdController.java ...*
+│   │   └── Rôle: Endpoint principal USSD - Reçoit les requêtes des opérateurs
+│   │   └── Appelle: UssdGatewayService, SessionManager
+│   │   └── Méthodes utiles: handleUssd(UssdRequest) → UssdResponse
+│   │
+│   └── admin/
+│       └── ServiceAdminController.java
+│           └── Rôle: CRUD des services USSD (enregistrement, activation, etc.)
+│           └── Appelle: ServiceAdminService, ServiceRegistry
+│           └── Méthodes utiles: 
+│               - registerService(ServiceRegistrationRequest)
+│               - listServices()
+│               - getService(code)
+│               - updateService(code, request)
+│               - deleteService(code)
+│               - toggleStatus(code)
+│
+├── domain/
+│   ├── enums/
+│   │   ├── StateType.java
+│   │   │   └── Rôle: Types d'états (MENU, INPUT, DISPLAY, PROCESSING, FINAL)
+│   │   │   └── Valeurs: MENU, INPUT, DISPLAY, PROCESSING, FINAL
+│   │   │
+│   │   ├── ActionType.java
+│   │   │   └── Rôle: Types d'actions (API_CALL, etc.)
+│   │   │   └── Valeurs: API_CALL, STORE_DATA, SEND_SMS
+│   │   │
+│   │   ├── AuthenticationType.java
+│   │   │   └── Rôle: Types d'authentification API
+│   │   │   └── Valeurs: NONE, BEARER, API_KEY, BASIC
+│   │   │
+│   │   ├── HttpMethod.java
+│   │   │   └── Rôle: Méthodes HTTP
+│   │   │   └── Valeurs: GET, POST, PUT, PATCH, DELETE
+│   │   │
+│   │   ├── ValidationType.java
+│   │   │   └── Rôle: Types de validation input
+│   │   │   └── Valeurs: TEXT, NUMERIC, PHONE, EMAIL, ALPHANUMERIC, DECIMAL, NAME
+│   │   │
+│   │   ├── ValidationErrorCode.java
+│   │   │   └── Rôle: Codes d'erreur de validation
+│   │   │   └── Valeurs: REQUIRED, MIN_LENGTH, MAX_LENGTH, INVALID_FORMAT, etc.
+│   │   │
+│   │   └── ApiResponseStatus.java
+│   │       └── Rôle: Statuts de réponse API externe
+│   │       └── Valeurs: SUCCESS, ERROR, TIMEOUT
+│   │
+│   └── model/
+│       ├── UssdService.java
+│       │   └── Rôle: Entity représentant un service USSD en DB
+│       │   └── Table: ussd_service
+│       │   └── Champs: id, code, name, shortCode, jsonConfig, apiBaseUrl, isActive, createdAt, updatedAt
+│       │   └── Appelle: automaton.AutomatonDefinition (Transient)
+│       │
+│       ├── UssdSession.java *
+│       │   └── Rôle: Entity représentant une session utilisateur en DB
+│       │   └── Table: ussd_session
+│       │   └── Champs: id, sessionId, phoneNumber, serviceCode, currentStateId, sessionData, createdAt, updatedAt, expiresAt, isActive
+│       │
+│       └── automaton/
+│           ├── AutomatonDefinition.java
+│           │   └── Rôle: DTO racine représentant le JSON workflow complet
+│           │   └── Champs: serviceCode, serviceName, version, shortCode, description, apiConfig, sessionConfig, states
+│           │   └── Appelle: ApiConfig, SessionConfig, State
+│           │
+│           ├── State.java
+│           │   └── Rôle: DTO représentant un état de l'automate
+│           │   └── Champs: id, name, type, isInitial, message, storeAs, validation, action, transitions
+│           │   └── Appelle: StateType, ValidationRule, Action, Transition
+│           │
+│           ├── Transition.java
+│           │   └── Rôle: DTO représentant une transition entre états
+│           │   └── Champs: input, condition, nextState, value, message
+│           │
+│           ├── Action.java
+│           │   └── Rôle: DTO représentant une action (appel API, etc.)
+│           │   └── Champs: type, method, endpoint, headers, body, onSuccess, onError
+│           │   └── Appelle: ActionType, HttpMethod, ActionResult
+│           │
+│           ├── ActionResult.java
+│           │   └── Rôle: DTO représentant le résultat d'une action
+│           │   └── Champs: nextState, responseMapping, message
+│           │
+│           ├── ValidationRule.java
+│           │   └── Rôle: DTO représentant les règles de validation
+│           │   └── Champs: type, minLength, maxLength, pattern, min, max, optional
+│           │   └── Appelle: ValidationType
+│           │
+│           ├── ApiConfig.java
+│           │   └── Rôle: DTO configuration API externe
+│           │   └── Champs: baseUrl, timeout, retryAttempts, authentication
+│           │   └── Appelle: Authentication
+│           │
+│           ├── Authentication.java
+│           │   └── Rôle: DTO credentials API
+│           │   └── Champs: type, credentials
+│           │   └── Appelle: AuthenticationType
+│           │
+│           └── SessionConfig.java
+│               └── Rôle: DTO configuration session
+│               └── Champs: timeoutSeconds, maxInactivitySeconds
+│
+├── dto/
+│   ├── request/
+│   │   ├── UssdRequest.java
+│   │   │   └── Rôle: DTO requête USSD entrante
+│   │   │   └── Champs: sessionId, serviceCode, phoneNumber, text
+│   │   │
+│   │   └── ServiceRegistrationRequest.java
+│   │       └── Rôle: DTO pour enregistrer un service
+│   │       └── Champs: jsonConfig
+│   │
+│   ├── response/
+│   │   ├── UssdResponse.java
+│   │   │   └── Rôle: DTO réponse USSD sortante
+│   │   │   └── Champs: message, continueSession
+│   │   │
+│   │   └── ServiceInfoResponse.java
+│   │       └── Rôle: DTO info service pour admin
+│   │       └── Champs: id, code, name, shortCode, apiBaseUrl, isActive, createdAt
+│   │
+│   └── ExternalApiResponse.java *
+│       └── Rôle: DTO générique pour réponses API externes
+│       └── Champs: status, data, error
+│       └── Appelle: ApiResponseStatus
+│
+├── exception/
+│   ├── GlobalExceptionHandler.java
+│   │   └── Rôle: Gestionnaire global des exceptions
+│   │   └── Appelle: Toutes les exceptions custom
+│   │   └── Méthodes utiles: handleXxxException() pour chaque type
+│   │
+│   ├── ServiceNotFoundException.java
+│   │   └── Rôle: Exception service introuvable
+│   │
+│   ├── SessionExpiredException.java
+│   │   └── Rôle: Exception session expirée
+│   │
+│   ├── InvalidStateException.java
+│   │   └── Rôle: Exception état invalide/introuvable
+│   │
+│   └── ValidationException.java
+│       └── Rôle: Exception validation input
+│
+├── repository/
+│   ├── UssdServiceRepository.java
+│   │   └── Rôle: Repository R2DBC pour UssdService
+│   │   └── Appelle: UssdService
+│   │   └── Méthodes utiles:
+│   │       - findByCode(code) → Mono<UssdService>
+│   │       - findByShortCode(shortCode) → Mono<UssdService>
+│   │       - findByIsActiveTrue() → Flux<UssdService>
+│   │
+│   └── UssdSessionRepository.java *
+│       └── Rôle: Repository R2DBC pour UssdSession
+│       └── Appelle: UssdSession
+│       └── Méthodes utiles:
+│           - findBySessionId(sessionId) → Mono<UssdSession>
+│           - findByPhoneNumber(phoneNumber) → Flux<UssdSession>
+│           - deleteByExpiresAtBefore(dateTime) → Mono<Void>
+│           - findByIsActiveTrueAndExpiresAtBefore(dateTime) → Flux<UssdSession>
+│
+├── service/
+│   ├── core/
+│   │   ├── UssdGatewayService.java *
+│   │   │   └── Rôle: Orchestrateur principal du flow USSD
+│   │   │   └── Appelle: SessionManager, ServiceRegistry, AutomatonEngine
+│   │   │   └── Méthodes utiles:
+│   │   │       - processRequest(UssdRequest, UssdSession) → Mono<StateResult>
+│   │   │
+│   │   ├── SessionManager.java *
+│   │   │   └── Rôle: Gestion des sessions (CRUD + expiration)
+│   │   │   └── Appelle: UssdSessionRepository, ServiceRegistry
+│   │   │   └── Méthodes utiles:
+│   │   │       - getOrCreateSession(sessionId, phoneNumber, serviceCode) → Mono<UssdSession>
+│   │   │       - updateSession(session) → Mono<UssdSession>
+│   │   │       - storeSessionData(sessionId, key, value) → Mono<Void>
+│   │   │       - getSessionData(sessionId) → Mono<Map<String, Object>>
+│   │   │       - endSession(sessionId) → Mono<Void>
+│   │   │
+│   │   ├── AutomatonEngine.java *
+│   │   │   └── Rôle: Moteur d'exécution de l'automate (transitions)
+│   │   │   └── Appelle: ValidationService, ApiInvoker, TemplateEngine
+│   │   │   └── Méthodes utiles:
+│   │   │       - executeState(automaton, session, userInput) → Mono<StateResult>
+│   │   │       - findNextState(state, input, validationResult) → Mono<State>
+│   │   │       - processAction(action, session) → Mono<ActionResult>
+│   │   │
+│   │   ├── ServiceRegistry.java
+│   │   │   └── Rôle: Cache et chargement des automates depuis DB
+│   │   │   └── Appelle: UssdServiceRepository, ObjectMapper
+│   │   │   └── Méthodes utiles:
+│   │   │       - loadAutomaton(serviceCode) → Mono<AutomatonDefinition>
+│   │   │       - getServiceByShortCode(shortCode) → Mono<UssdService>
+│   │   │       - invalidateCache(serviceCode) → void
+│   │   │
+│   │   └── StateResult.java *
+│   │       └── Rôle: DTO résultat d'exécution d'un état
+│   │       └── Champs: message, continueSession, nextStateId, updatedSessionData
+│   │
+│   ├── admin/
+│   │   └── ServiceAdminService.java
+│   │       └── Rôle: Logique métier admin (enregistrement services)
+│   │       └── Appelle: UssdServiceRepository, ServiceRegistry, ObjectMapper
+│   │       └── Méthodes utiles:
+│   │           - registerService(jsonConfig) → Mono<UssdService>
+│   │           - updateService(code, jsonConfig) → Mono<UssdService>
+│   │           - activateService(code) → Mono<UssdService>
+│   │           - deactivateService(code) → Mono<UssdService>
+│   │           - deleteService(code) → Mono<Void>
+│   │
+│   ├── external/
+│   │   ├── ApiInvoker.java *
+│   │   │   └── Rôle: Invocation des API externes
+│   │   │   └── Appelle: WebClient, AuthenticationHandler, TemplateEngine
+│   │   │   └── Méthodes utiles:
+│   │   │       - invoke(action, apiConfig, sessionData) → Mono<ExternalApiResponse>
+│   │   │       - buildRequest(action, sessionData) → WebClient.RequestHeadersSpec
+│   │   │
+│   │   ├── AuthenticationHandler.java
+│   │   │   └── Rôle: Gestion authentification API (Bearer, API Key, etc.)
+│   │   │   └── Appelle: Rien
+│   │   │   └── Méthodes utiles:
+│   │   │       - applyAuthentication(requestSpec, authentication) → WebClient.RequestHeadersSpec
+│   │   │
+│   │   └── SessionExpirationService.java *
+│   │       └── Rôle: Cronjob nettoyage sessions expirées
+│   │       └── Appelle: UssdSessionRepository
+│   │       └── Méthodes utiles:
+│   │           - cleanupExpiredSessions() → Mono<Void> (@Scheduled)
+│   │
+│   └── validation/
+│       ├── ValidationService.java
+│       │   └── Rôle: Validation des inputs utilisateur
+│       │   └── Appelle: Rien (logique pure)
+│       │   └── Méthodes utiles:
+│       │       - validate(input, validationRule) → Mono<ValidationResult>
+│       │       - validateText(input, rule) → ValidationResult
+│       │       - validateNumeric(input, rule) → ValidationResult
+│       │       - validatePhone(input, rule) → ValidationResult
+│       │       - validateEmail(input, rule) → ValidationResult
+│       │
+│       └── ValidationResult.java ...
+│           └── Rôle: DTO résultat de validation
+│           └── Champs: isValid, errorCode, errorMessage
+│           └── Appelle: ValidationErrorCode
+│
+└── util/
+    ├── TemplateEngine.java ...
+    │   └── Rôle: Remplacement variables {{xxx}} dans messages/API
+    │   └── Appelle: Rien
+    │   └── Méthodes utiles:
+    │       - render(template, sessionData) → String
+    │       - extractVariables(template) → List<String>
+    │
+    ├── JsonPathExtractor.java
+    │   └── Rôle: Extraction données depuis réponses API (JSONPath)
+    │   └── Appelle: Rien
+    │   └── Méthodes utiles:
+    │       - extract(jsonResponse, path) → Object
+    │       - extractMultiple(jsonResponse, mappings) → Map<String, Object>
+    │
+    ├── JsonMapper.java *
+    │   └── Rôle: Utilitaires mapping JSON
+    │   └── Appelle: ObjectMapper
+    │   └── Méthodes utiles:
+    │       - toJson(object) → String
+    │       - fromJson(json, class) → T
+    │
+    └── ShortCodeGenerator.java
+        └── Rôle: Génération short codes (*500*X#)
+        └── Appelle: UssdServiceRepository
+        └── Méthodes utiles:
+            - generateNext() → Mono<String>
+            - isAvailable(shortCode) → Mono<Boolean>
+            - reserve(shortCode) → Mono<String>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ============================================================================
+# TEST 1: REQUÊTE INITIALE - Utilisateur tape *500#
+# ============================================================================
+
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": null,
+    "phoneNumber": "237690123456",
+    "serviceCode": "*500#",
+    "text": "",
+    "userInput": ""
+  }'
+
+# Réponse attendue : Le message d'accueil du service (état initial)
+
+
+# ============================================================================
+# TEST 2: DEUXIÈME INTERACTION - Utilisateur entre "1"
+# ============================================================================
+
+# Utilisez le sessionId retourné par la première requête
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "SESSION_ID_ICI",
+    "phoneNumber": "237690123456",
+    "serviceCode": "*500#",
+    "text": "1",
+    "userInput": "1"
+  }'
+
+
+# ============================================================================
+# TEST 3: VÉRIFIER LA SESSION EN BASE DE DONNÉES
+# ============================================================================
+
+# Connectez-vous à PostgreSQL
+psql -U your_user -d your_database
+
+# Vérifier les sessions actives
+SELECT * FROM ussd_sessions WHERE is_active = true ORDER BY created_at DESC;
+
+# Vérifier une session spécifique par téléphone
+SELECT * FROM ussd_sessions WHERE phone_number = '237690123456' ORDER BY created_at DESC;
+
+# Voir toutes les sessions
+SELECT 
+    id,
+    session_id,
+    phone_number,
+    service_code,
+    current_state_id,
+    is_active,
+    created_at,
+    expires_at
+FROM ussd_sessions 
+ORDER BY created_at DESC 
+LIMIT 10;
+
+
+# ============================================================================
+# TEST 4: FORMAT AFRICA'S TALKING (si vous utilisez ce gateway)
+# ============================================================================
+
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "sessionId=&phoneNumber=237690123456&serviceCode=*500*1%23&text="
+
+
+# ============================================================================
+# TEST 5: SCÉNARIO COMPLET - Flow Todo Manager
+# ============================================================================
+
+# Étape 1: Menu principal
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phoneNumber": "237690123456",
+    "serviceCode": "*500#",
+    "text": ""
+  }' | jq
+
+# Réponse attendue:
+# {
+#   "sessionId": "uuid-generated",
+#   "message": "Bienvenue sur Todo Manager\n1. Créer une tâche\n2. Voir mes tâches\n3. Marquer comme terminé",
+#   "continueSession": true
+# }
+
+# Étape 2: Sélectionner option 1 (Créer une tâche)
+SESSION_ID="uuid-from-step-1"
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"sessionId\": \"$SESSION_ID\",
+    \"phoneNumber\": \"237690123456\",
+    \"serviceCode\": \"*500#\",
+    \"text\": \"1\"
+  }" | jq
+
+# Réponse attendue:
+# {
+#   "sessionId": "same-uuid",
+#   "message": "Entrez le titre de la tâche:",
+#   "continueSession": true
+# }
+
+# Étape 3: Entrer le titre
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"sessionId\": \"$SESSION_ID\",
+    \"phoneNumber\": \"237690123456\",
+    \"serviceCode\": \"*500#\",
+    \"text\": \"1*Acheter du lait\"
+  }" | jq
+
+# Réponse attendue:
+# {
+#   "sessionId": "same-uuid",
+#   "message": "Tâche créée avec succès!",
+#   "continueSession": false
+# }
+
+
+# ============================================================================
+# TEST 6: TESTER PLUSIEURS UTILISATEURS EN PARALLÈLE
+# ============================================================================
+
+# Utilisateur 1
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "237690111111", "serviceCode": "*500#", "text": ""}' &
+
+# Utilisateur 2
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "237690222222", "serviceCode": "*500#", "text": ""}' &
+
+# Utilisateur 3
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "237690333333", "serviceCode": "*500#", "text": ""}' &
+
+wait
+
+# Vérifier en base
+psql -U your_user -d your_database -c "SELECT phone_number, session_id, is_active FROM ussd_sessions WHERE is_active = true;"
+
+
+# ============================================================================
+# TEST 7: TESTER L'EXPIRATION DE SESSION
+# ============================================================================
+
+# Créer une session
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "237690123456", "serviceCode": "*500#", "text": ""}')
+
+SESSION_ID=$(echo $RESPONSE | jq -r '.sessionId')
+echo "Session créée: $SESSION_ID"
+
+# Attendre 6 minutes (ou votre timeout configuré)
+echo "Attente de 6 minutes pour expiration..."
+sleep 360
+
+# Essayer d'utiliser la session expirée
+curl -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"sessionId\": \"$SESSION_ID\",
+    \"phoneNumber\": \"237690123456\",
+    \"serviceCode\": \"*500#\",
+    \"text\": \"1\"
+  }" | jq
+
+# Devrait créer une nouvelle session ou retourner une erreur
+
+
+# ============================================================================
+# TEST 8: POSTMAN COLLECTION (Importer dans Postman)
+# ============================================================================
+
+cat > ussd_tests.postman_collection.json << 'EOF'
+{
+  "info": {
+    "name": "USSD Gateway Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Initial Request - *500#",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phoneNumber\": \"237690123456\",\n  \"serviceCode\": \"*500#\",\n  \"text\": \"\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/ussd",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "ussd"]
+        }
+      }
+    },
+    {
+      "name": "2. Select Option 1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"phoneNumber\": \"237690123456\",\n  \"serviceCode\": \"*500#\",\n  \"text\": \"1\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/ussd",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "ussd"]
+        }
+      }
+    }
+  ]
+}
+EOF
+
+echo "Collection Postman créée: ussd_tests.postman_collection.json"
+
+
+# ============================================================================
+# TEST 9: VÉRIFIER LES LOGS
+# ============================================================================
+
+# Suivre les logs en temps réel
+tail -f logs/application.log | grep -i "ussd\|session"
+
+# Ou si vous utilisez docker
+docker logs -f your-container-name | grep -i "ussd\|session"
+
+
+# ============================================================================
+# TEST 10: SCRIPT DE TEST AUTOMATISÉ
+# ============================================================================
+
+#!/bin/bash
+
+echo "🚀 Démarrage des tests USSD..."
+
+# Test 1: Requête initiale
+echo "📱 Test 1: Requête initiale *500#"
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/ussd \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "237690123456", "serviceCode": "*500#", "text": ""}')
+
+echo "Réponse: $RESPONSE"
+
+SESSION_ID=$(echo $RESPONSE | jq -r '.sessionId')
+MESSAGE=$(echo $RESPONSE | jq -r '.message')
+
+echo "✅ Session créée: $SESSION_ID"
+echo "📝 Message: $MESSAGE"
+
+# Vérifier en base
+echo ""
+echo "🔍 Vérification en base de données..."
+psql -U your_user -d your_database -c \
+  "SELECT session_id, phone_number, current_state_id, is_active, created_at 
+   FROM ussd_sessions 
+   WHERE session_id = '$SESSION_ID';"
+
+echo ""
+echo "✅ Tests terminés!"

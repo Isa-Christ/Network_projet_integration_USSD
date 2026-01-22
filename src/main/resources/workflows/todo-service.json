@@ -1,0 +1,272 @@
+{
+  "serviceCode": "todo-manager",
+  "serviceName": "Todo Manager Service",
+  "version": "1.0.0",
+  "description": "Task management service",
+  
+  "apiConfig": {
+    "baseUrl": "https://jsonplaceholder.typicode.com",
+    "timeout": 10000,
+    "retryAttempts": 2,
+    "authentication": {
+      "type": "NONE"
+    }
+  },
+
+  "sessionConfig": {
+    "timeoutSeconds": 60,
+    "maxInactivitySeconds": 30
+  },
+  
+  "states": [
+    {
+      "id": "1",
+      "name": "TodoMainMenu",
+      "type": "MENU",
+      "isInitial": true,
+      "message": "Todo Manager\n1. View my tasks\n2. Add new task\n3. Mark as complete\n4. Delete task\n0. Exit",
+      "transitions": [
+        {"input": "1", "nextState": "2"},
+        {"input": "2", "nextState": "5"},
+        {"input": "3", "nextState": "8"},
+        {"input": "4", "nextState": "11"},
+        {"input": "0", "nextState": "99"}
+      ]
+    },
+    
+    {
+      "id": "2",
+      "name": "ViewTodoList",
+      "type": "DISPLAY",
+      "message": "Loading your tasks...",
+      "action": {
+        "type": "API_CALL",
+        "method": "GET",
+        "endpoint": "/todos?userId=1&_limit=5",
+        "onSuccess": {
+          "nextState": "3",
+          "responseMapping": {
+            "tasks": "data"
+          }
+        },
+        "onError": {
+          "nextState": "1",
+          "message": "Failed to load tasks. Try again.\n99. Back"
+        }
+      },
+      "transitions": [
+        {"condition": "SUCCESS", "nextState": "3"},
+        {"condition": "ERROR", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "3",
+      "name": "DisplayTodoList",
+      "type": "DISPLAY",
+      "message": "Your Tasks:\n{{#each tasks}}\n{{id}}. {{title}} {{#if completed}}✓{{else}}○{{/if}}\n{{/each}}\n\n99. Back to menu",
+      "transitions": [
+        {"input": "99", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "5",
+      "name": "EnterTaskTitle",
+      "type": "INPUT",
+      "message": "Enter task title:\n99. Cancel",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 3,
+        "maxLength": 100
+      },
+      "storeAs": "taskTitle",
+      "transitions": [
+        {"condition": "VALID", "nextState": "6"},
+        {"input": "99", "nextState": "1"},
+        {"condition": "INVALID", "nextState": "5", "message": "Title too short. Try again:"}
+      ]
+    },
+    
+    {
+      "id": "6",
+      "name": "CreateTask",
+      "type": "PROCESSING",
+      "message": "Creating task...",
+      "action": {
+        "type": "API_CALL",
+        "method": "POST",
+        "endpoint": "/todos",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "userId": 1,
+          "title": "{{taskTitle}}",
+          "completed": false
+        },
+        "onSuccess": {
+          "nextState": "7",
+          "responseMapping": {
+            "taskId": "data.id",
+            "taskTitle": "data.title"
+          }
+        },
+        "onError": {
+          "nextState": "5",
+          "message": "Failed to create task. Try again:"
+        }
+      },
+      "transitions": [
+        {"condition": "SUCCESS", "nextState": "7"},
+        {"condition": "ERROR", "nextState": "5"}
+      ]
+    },
+    
+    {
+      "id": "7",
+      "name": "TaskCreated",
+      "type": "FINAL",
+      "message": "✅ Task created!\n\nID: {{taskId}}\nTitle: {{taskTitle}}\n\n1. Add another task\n2. View all tasks\n99. Main menu",
+      "transitions": [
+        {"input": "1", "nextState": "5"},
+        {"input": "2", "nextState": "2"},
+        {"input": "99", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "8",
+      "name": "EnterTaskIdToComplete",
+      "type": "INPUT",
+      "message": "Enter task ID to mark as complete:\n99. Cancel",
+      "validation": {
+        "type": "NUMERIC",
+        "min": 1,
+        "max": 999
+      },
+      "storeAs": "completeTaskId",
+      "transitions": [
+        {"condition": "VALID", "nextState": "9"},
+        {"input": "99", "nextState": "1"},
+        {"condition": "INVALID", "nextState": "8"}
+      ]
+    },
+    
+    {
+      "id": "9",
+      "name": "CompleteTask",
+      "type": "PROCESSING",
+      "message": "Updating task...",
+      "action": {
+        "type": "API_CALL",
+        "method": "PATCH",
+        "endpoint": "/todos/{{completeTaskId}}",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "completed": true
+        },
+        "onSuccess": {
+          "nextState": "10",
+          "responseMapping": {
+            "taskId": "data.id"
+          }
+        },
+        "onError": {
+          "nextState": "8",
+          "message": "Task not found. Try another ID:"
+        }
+      },
+      "transitions": [
+        {"condition": "SUCCESS", "nextState": "10"},
+        {"condition": "ERROR", "nextState": "8"}
+      ]
+    },
+    
+    {
+      "id": "10",
+      "name": "TaskCompleted",
+      "type": "FINAL",
+      "message": "✅ Task {{taskId}} marked as complete!\n\n1. Mark another\n2. View tasks\n99. Main menu",
+      "transitions": [
+        {"input": "1", "nextState": "8"},
+        {"input": "2", "nextState": "2"},
+        {"input": "99", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "11",
+      "name": "EnterTaskIdToDelete",
+      "type": "INPUT",
+      "message": "Enter task ID to delete:\n99. Cancel",
+      "validation": {
+        "type": "NUMERIC",
+        "min": 1,
+        "max": 999
+      },
+      "storeAs": "deleteTaskId",
+      "transitions": [
+        {"condition": "VALID", "nextState": "12"},
+        {"input": "99", "nextState": "1"},
+        {"condition": "INVALID", "nextState": "11"}
+      ]
+    },
+    
+    {
+      "id": "12",
+      "name": "ConfirmDeleteTask",
+      "type": "MENU",
+      "message": "Are you sure you want to delete task {{deleteTaskId}}?\n1. Yes, delete\n2. No, cancel",
+      "transitions": [
+        {"input": "1", "nextState": "13"},
+        {"input": "2", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "13",
+      "name": "DeleteTask",
+      "type": "PROCESSING",
+      "message": "Deleting task...",
+      "action": {
+        "type": "API_CALL",
+        "method": "DELETE",
+        "endpoint": "/todos/{{deleteTaskId}}",
+        "onSuccess": {
+          "nextState": "14"
+        },
+        "onError": {
+          "nextState": "11",
+          "message": "Failed to delete. Try again:"
+        }
+      },
+      "transitions": [
+        {"condition": "SUCCESS", "nextState": "14"},
+        {"condition": "ERROR", "nextState": "11"}
+      ]
+    },
+    
+    {
+      "id": "14",
+      "name": "TaskDeleted",
+      "type": "FINAL",
+      "message": "✅ Task {{deleteTaskId}} deleted!\n\n1. Delete another\n2. View tasks\n99. Main menu",
+      "transitions": [
+        {"input": "1", "nextState": "11"},
+        {"input": "2", "nextState": "2"},
+        {"input": "99", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "99",
+      "name": "ExitMessage",
+      "type": "FINAL",
+      "message": "Thank you for using Todo Manager!\n\nDial *123*1# anytime to return.",
+      "transitions": []
+    }
+  ]
+}

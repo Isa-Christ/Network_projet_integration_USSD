@@ -1,0 +1,168 @@
+{
+  "serviceCode": "weather-service",
+  "serviceName": "Weather Information Service",
+  "version": "1.0.0",
+  "description": "Real-time weather information",
+  
+  "apiConfig": {
+    "baseUrl": "https://api.openweathermap.org/data/2.5",
+    "timeout": 10000,
+    "retryAttempts": 2,
+    "authentication": {
+      "type": "API_KEY",
+      "credentials": {
+        "paramName": "appid",
+        "apiKey": "${OPENWEATHER_API_KEY}"
+      }
+    }
+  },
+
+  "sessionConfig": {
+    "timeoutSeconds": 60,
+    "maxInactivitySeconds": 30
+  },
+  
+  "states": [
+    {
+      "id": "1",
+      "name": "WeatherMainMenu",
+      "type": "MENU",
+      "isInitial": true,
+      "message": "Weather Service\n1. Current weather\n2. Weather by city\n0. Exit",
+      "transitions": [
+        {"input": "1", "nextState": "2"},
+        {"input": "2", "nextState": "5"},
+        {"input": "0", "nextState": "99"}
+      ]
+    },
+    
+    {
+      "id": "2",
+      "name": "SelectCurrentLocationCity",
+      "type": "MENU",
+      "message": "Select your city:\n1. Yaounde\n2. Douala\n3. Bafoussam\n4. Garoua\n5. Bamenda\n99. Back",
+      "storeAs": "selectedCity",
+      "transitions": [
+        {"input": "1", "nextState": "3", "value": "Yaounde"},
+        {"input": "2", "nextState": "3", "value": "Douala"},
+        {"input": "3", "nextState": "3", "value": "Bafoussam"},
+        {"input": "4", "nextState": "3", "value": "Garoua"},
+        {"input": "5", "nextState": "3", "value": "Bamenda"},
+        {"input": "99", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "3",
+      "name": "FetchCurrentWeather",
+      "type": "PROCESSING",
+      "message": "Fetching weather for {{selectedCity}}...",
+      "action": {
+        "type": "API_CALL",
+        "method": "GET",
+        "endpoint": "/weather?q={{selectedCity}},CM&units=metric",
+        "onSuccess": {
+          "nextState": "4",
+          "responseMapping": {
+            "temperature": "data.main.temp",
+            "feelsLike": "data.main.feels_like",
+            "humidity": "data.main.humidity",
+            "description": "data.weather[0].description",
+            "windSpeed": "data.wind.speed",
+            "cityName": "data.name"
+          }
+        },
+        "onError": {
+          "nextState": "2",
+          "message": "Failed to fetch weather. Try again.\n99. Back"
+        }
+      },
+      "transitions": [
+        {"condition": "SUCCESS", "nextState": "4"},
+        {"condition": "ERROR", "nextState": "2"}
+      ]
+    },
+    
+    {
+      "id": "4",
+      "name": "DisplayCurrentWeather",
+      "type": "DISPLAY",
+      "message": "🌤️ Weather in {{cityName}}\n\nTemp: {{temperature}}°C\nFeels like: {{feelsLike}}°C\nCondition: {{description}}\nHumidity: {{humidity}}%\nWind: {{windSpeed}} m/s\n\n1. Check another city\n99. Main menu",
+      "transitions": [
+        {"input": "1", "nextState": "2"},
+        {"input": "99", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "5",
+      "name": "EnterCityName",
+      "type": "INPUT",
+      "message": "Enter city name:\n99. Cancel",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 2,
+        "maxLength": 50,
+        "pattern": "^[a-zA-Z\\s-]+$"
+      },
+      "storeAs": "customCity",
+      "transitions": [
+        {"condition": "VALID", "nextState": "6"},
+        {"input": "99", "nextState": "1"},
+        {"condition": "INVALID", "nextState": "5", "message": "Invalid city name. Try again:"}
+      ]
+    },
+    
+    {
+      "id": "6",
+      "name": "FetchCustomCityWeather",
+      "type": "PROCESSING",
+      "message": "Fetching weather for {{customCity}}...",
+      "action": {
+        "type": "API_CALL",
+        "method": "GET",
+        "endpoint": "/weather?q={{customCity}}&units=metric",
+        "onSuccess": {
+          "nextState": "7",
+          "responseMapping": {
+            "temperature": "data.main.temp",
+            "feelsLike": "data.main.feels_like",
+            "humidity": "data.main.humidity",
+            "description": "data.weather[0].description",
+            "windSpeed": "data.wind.speed",
+            "cityName": "data.name",
+            "country": "data.sys.country"
+          }
+        },
+        "onError": {
+          "nextState": "5",
+          "message": "City not found. Try again:"
+        }
+      },
+      "transitions": [
+        {"condition": "SUCCESS", "nextState": "7"},
+        {"condition": "ERROR", "nextState": "5"}
+      ]
+    },
+    
+    {
+      "id": "7",
+      "name": "DisplayCustomCityWeather",
+      "type": "DISPLAY",
+      "message": "🌤️ Weather in {{cityName}}, {{country}}\n\nTemp: {{temperature}}°C\nFeels like: {{feelsLike}}°C\nCondition: {{description}}\nHumidity: {{humidity}}%\nWind: {{windSpeed}} m/s\n\n1. Check another city\n2. Select from list\n99. Main menu",
+      "transitions": [
+        {"input": "1", "nextState": "5"},
+        {"input": "2", "nextState": "2"},
+        {"input": "99", "nextState": "1"}
+      ]
+    },
+    
+    {
+      "id": "99",
+      "name": "ExitMessage",
+      "type": "FINAL",
+      "message": "Thank you for using Weather Service!\n\nDial *123*2# anytime to return.",
+      "transitions": []
+    }
+  ]
+}
