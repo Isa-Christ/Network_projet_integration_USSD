@@ -52,8 +52,8 @@ public class ServiceAdminController {
 				// Generate short code reactively
 				shortCodeGenerator.generateNext()
 						.map(generatedShortCode -> UssdService.builder()
-								.code(request.getServiceCode())
-								.name(request.getServiceName())
+								.code(automaton.getServiceCode())
+								.name(automaton.getServiceName())
 								.shortCode(generatedShortCode) // ← Ici c'est maintenant un String
 								.jsonConfig(request.getJsonConfig())
 								.apiBaseUrl(automaton.getApiConfig().getBaseUrl())

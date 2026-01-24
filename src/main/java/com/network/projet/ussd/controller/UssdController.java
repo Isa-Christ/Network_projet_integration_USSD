@@ -13,12 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-/**
- * UssdController - Main entry point for USSD requests
- * 
- * @author USSD Team
- * @since 2026-01-22
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/ussd")
@@ -44,8 +38,8 @@ public class UssdController {
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     public Mono<UssdResponse> handleUssdRequest(@RequestBody UssdRequest request) {
-        log.info("USSD Request - Session: {}, Code: {}, Phone: {}, Text: '{}'",
-                request.getSessionId(), request.getServiceCode(), 
+        log.info("USSD Request - Session: {}, UssdCode: {}, Phone: {}, Text: '{}'",
+                request.getSessionId(), request.getUssdCode(), 
                 request.getPhoneNumber(), request.getText());
 
         return validateRequest(request)
@@ -56,36 +50,29 @@ public class UssdController {
     }
 
     /**
-     * Routes the request based on serviceCode and text
+     * Routes the request based on ussdCode and text
      */
     private Mono<UssdResponse> routeRequest(UssdRequest request) {
-        String serviceCode = request.getServiceCode();
+        String ussdCode = request.getUssdCode();
         String text = request.getText();
         
-        // Check if session exists first
         return sessionManager.getSession(request.getSessionId())
             .flatMap(existingSession -> {
-                // Session exists - continue it
                 log.debug("Route: Continuing existing session, currentState={}",
                         existingSession.getCurrentStateId());
                 return processServiceRequest(request, existingSession);
             })
             .switchIfEmpty(Mono.defer(() -> {
-                // No session - new request
-                
-                // CAS 1: Main menu
-                if (MAIN_MENU_CODE.equals(serviceCode) && isTextEmpty(text)) {
+                if (MAIN_MENU_CODE.equals(ussdCode) && isTextEmpty(text)) {
                     log.debug("Route: Main Menu");
                     return showMainMenu();
                 }
                 
-                // CAS 2: Selection from menu
-                if (MAIN_MENU_CODE.equals(serviceCode) && !isTextEmpty(text)) {
+                if (MAIN_MENU_CODE.equals(ussdCode) && !isTextEmpty(text)) {
                     log.debug("Route: Menu Selection → Service");
                     return handleMenuSelection(request);
                 }
                 
-                // CAS 3: Direct service
                 log.debug("Route: Direct Service");
                 return createAndProcessServiceRequest(request);
             }));
@@ -160,14 +147,14 @@ public class UssdController {
                         .build());
                 }
                 
-                String targetServiceCode = SERVICE_CODE_PREFIX + serviceNumber + SERVICE_CODE_SUFFIX;
+                String targetUssdCode = SERVICE_CODE_PREFIX + serviceNumber + SERVICE_CODE_SUFFIX;
                 
-                log.info("Menu selection {} → Service code {}", serviceNumber, targetServiceCode);
+                log.info("Menu selection {} → USSD code {}", serviceNumber, targetUssdCode);
                 
                 UssdRequest serviceRequest = UssdRequest.builder()
                     .sessionId(request.getSessionId())
                     .phoneNumber(request.getPhoneNumber())
-                    .serviceCode(targetServiceCode)
+                    .ussdCode(targetUssdCode)
                     .text("")
                     .build();
                 
@@ -182,7 +169,7 @@ public class UssdController {
         return sessionManager.getOrCreateSession(
                 request.getSessionId(),
                 request.getPhoneNumber(),
-                request.getServiceCode()
+                request.getUssdCode()
             )
             .flatMap(session -> {
                 log.debug("New session created - ID: {}, State: {}",
@@ -238,8 +225,8 @@ public class UssdController {
             return Mono.error(new IllegalArgumentException("PhoneNumber requis"));
         }
         
-        if (isNullOrEmpty(request.getServiceCode())) {
-            return Mono.error(new IllegalArgumentException("ServiceCode requis"));
+        if (isNullOrEmpty(request.getUssdCode())) {
+            return Mono.error(new IllegalArgumentException("UssdCode requis"));
         }
         
         if (request.getText() == null) {

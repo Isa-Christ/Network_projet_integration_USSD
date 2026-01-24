@@ -37,7 +37,7 @@
     {
       "id": "2",
       "name": "ViewTodoList",
-      "type": "DISPLAY",
+      "type": "PROCESSING",
       "message": "Loading your tasks...",
       "action": {
         "type": "API_CALL",

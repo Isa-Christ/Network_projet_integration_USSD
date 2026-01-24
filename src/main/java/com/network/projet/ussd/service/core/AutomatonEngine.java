@@ -322,15 +322,31 @@ public class AutomatonEngine {
 			String userInput) {
 
 		return sessionManager.storeSessionData(session.getSessionId(), currentState.getStoreAs(), userInput)
-				.then(Mono.defer(() -> {
+				.then(sessionManager.getSessionData(session.getSessionId()))
+				.flatMap(collectedData -> {
 					Transition validTransition = currentState.getTransitions().stream()
 							.filter(t -> "VALID".equals(t.getCondition()))
 							.findFirst()
 							.orElseThrow(() -> new InvalidStateException(
 									"No VALID transition defined for state: " + currentState.getId()));
 
-					return navigateToState(session, automaton, validTransition.getNextState());
-				}));
+					String nextStateId = validTransition.getNextState();
+					State nextState = automaton.getStateById(nextStateId);
+
+					// Navigate to next state and update session
+					session.setCurrentStateId(nextStateId);
+					return sessionManager.updateSession(session)
+							.then(Mono.defer(() -> {
+								// If next state is PROCESSING, execute it immediately
+								if (nextState.getType() == StateType.PROCESSING) {
+									log.debug("Next state is PROCESSING - executing immediately without waiting for input");
+									return executeProcessingState(automaton, session, nextState, "", collectedData);
+								}
+
+								// Otherwise, navigate normally
+								return navigateToState(session, automaton, nextStateId);
+							}));
+				});
 	}
 
 	private Mono<StateResult> handleInvalidInput(
@@ -370,16 +386,21 @@ public class AutomatonEngine {
 		session.setCurrentStateId(nextStateId);
 		return sessionManager.updateSession(session)
 				.then(sessionManager.getSessionData(session.getSessionId()))
-				.map(collectedData -> {
-					String message = templateEngine.render(nextState.getMessage(), collectedData);
+				.flatMap(collectedData -> {
+					// If next state is PROCESSING, execute it immediately
+					if (nextState.getType() == StateType.PROCESSING) {
+						log.debug("State {} is PROCESSING - executing immediately", nextStateId);
+						return executeProcessingState(automaton, session, nextState, "", collectedData);
+					}
 
+					String message = templateEngine.render(nextState.getMessage(), collectedData);
 					boolean isFinal = nextState.getType() == StateType.FINAL;
 
-					return StateResult.builder()
+					return Mono.just(StateResult.builder()
 							.message(message)
 							.nextStateId(nextStateId)
 							.continueSession(!isFinal)
-							.build();
+							.build());
 				});
 	}
 
@@ -440,7 +461,7 @@ public class AutomatonEngine {
 			AutomatonDefinition automaton,
 			String userInput) {
 
-		log.debug("Legacy processInput called");
+		// log.debug("Legacy processInput called");
 		return executeState(automaton, session, userInput);
 	}
 }

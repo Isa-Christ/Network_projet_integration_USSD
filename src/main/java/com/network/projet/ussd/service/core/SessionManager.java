@@ -15,13 +15,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
-/**
- * SessionManager - Gestionnaire des sessions USSD
- * 
- * @author Network Projet Team
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,30 +30,30 @@ public class SessionManager {
     /**
      * Récupère une session existante ou en crée une nouvelle
      */
-    public Mono<UssdSession> getOrCreateSession(String sessionId, String phoneNumber, String serviceCode) {
-        log.debug("Get or create session: sessionId={}, phone={}, serviceCode={}",
-                sessionId, phoneNumber, serviceCode);
+    public Mono<UssdSession> getOrCreateSession(String sessionId, String phoneNumber, String ussdCode) {
+        log.debug("Get or create session: sessionId={}, phone={}, ussdCode={}",
+                sessionId, phoneNumber, ussdCode);
 
         if (sessionId != null && !sessionId.isEmpty()) {
             return sessionRepository.findBySessionId(sessionId)
                     .flatMap(session -> {
                         if (!session.isActive() || session.isExpired()) {
                             log.info("Session {} is inactive/expired, creating new", sessionId);
-                            return createNewSession(sessionId, phoneNumber, serviceCode);
+                            return createNewSession(sessionId, phoneNumber, ussdCode);
                         }
                         return updateSessionExpiration(session);
                     })
-                    .switchIfEmpty(createNewSession(sessionId, phoneNumber, serviceCode));
+                    .switchIfEmpty(createNewSession(sessionId, phoneNumber, ussdCode));
         }
 
         return sessionRepository.findByPhoneNumberAndIsActiveTrue(phoneNumber)
                 .flatMap(existingSession -> {
                     if (existingSession.isExpired()) {
-                        return expireAndCreateNew(existingSession, phoneNumber, serviceCode);
+                        return expireAndCreateNew(existingSession, phoneNumber, ussdCode);
                     }
                     return updateSessionExpiration(existingSession);
                 })
-                .switchIfEmpty(createNewSession(sessionId, phoneNumber, serviceCode));
+                .switchIfEmpty(createNewSession(sessionId, phoneNumber, ussdCode));
     }
 
     /**
@@ -146,18 +140,18 @@ public class SessionManager {
     /**
      * Crée une nouvelle session
      */
-    private Mono<UssdSession> createNewSession(String sessionId, String phoneNumber, String serviceCode) {
-        log.info("Creating new session: sessionId={}, phone={}, serviceCode={}",
-                sessionId, phoneNumber, serviceCode);
+    private Mono<UssdSession> createNewSession(String sessionId, String phoneNumber, String ussdCode) {
+        log.info("Creating new session: sessionId={}, phone={}, ussdCode={}",
+                sessionId, phoneNumber, ussdCode);
 
-        return serviceRegistry.getServiceByShortCode(serviceCode)
+        return serviceRegistry.getServiceByShortCode(ussdCode)
                 .flatMap(service -> serviceRegistry.loadAutomaton(service.getCode())
                         .map(automaton -> findInitialState(automaton))
                         .map(initialState -> {
                             UssdSession session = UssdSession.builder()
-                                    .sessionId(sessionId) // UTILISER LE sessionId FOURNI
+                                    .sessionId(sessionId)
                                     .phoneNumber(phoneNumber)
-                                    .serviceCode(service.getCode())
+                                    .serviceCode(service.getCode()) // CODE TECHNIQUE
                                     .currentStateId(initialState.getId())
                                     .sessionData("{}")
                                     .isActive(true)
@@ -170,11 +164,11 @@ public class SessionManager {
                             return session;
                         }))
                 .switchIfEmpty(Mono.defer(() -> {
-                    log.warn("Service not found for code: {}, creating session with default state", serviceCode);
+                    log.warn("Service not found for ussdCode: {}, creating session with default state", ussdCode);
                     UssdSession session = UssdSession.builder()
-                            .sessionId(sessionId) // UTILISER LE sessionId FOURNI
+                            .sessionId(sessionId)
                             .phoneNumber(phoneNumber)
-                            .serviceCode(serviceCode)
+                            .serviceCode(ussdCode) // Fallback
                             .currentStateId("1")
                             .sessionData("{}")
                             .isActive(true)
@@ -186,8 +180,8 @@ public class SessionManager {
                     return Mono.just(session);
                 }))
                 .flatMap(sessionRepository::save)
-                .doOnSuccess(s -> log.info("Session created: sessionId={}, phone={}",
-                        s.getSessionId(), s.getPhoneNumber()))
+                .doOnSuccess(s -> log.info("Session created: sessionId={}, phone={}, serviceCode={}",
+                        s.getSessionId(), s.getPhoneNumber(), s.getServiceCode()))
                 .doOnError(e -> log.error("Failed to create session for phone: {}", phoneNumber, e));
     }
 
@@ -204,12 +198,12 @@ public class SessionManager {
     /**
      * Expire une session et en crée une nouvelle
      */
-    private Mono<UssdSession> expireAndCreateNew(UssdSession oldSession, String phoneNumber, String serviceCode) {
+    private Mono<UssdSession> expireAndCreateNew(UssdSession oldSession, String phoneNumber, String ussdCode) {
         log.info("Expiring session {} and creating new one", oldSession.getSessionId());
 
         oldSession.terminate();
         return sessionRepository.save(oldSession)
-                .then(createNewSession(oldSession.getSessionId(), phoneNumber, serviceCode));
+                .then(createNewSession(oldSession.getSessionId(), phoneNumber, ussdCode));
     }
 
     /**
@@ -265,10 +259,6 @@ public class SessionManager {
 
     /**
      * Récupère une session par son sessionId
-     * Utilisé par UssdController ligne 223
-     * 
-     * @param sessionId ID de la session
-     * @return Mono<UssdSession> Session trouvée ou vide
      */
     public Mono<UssdSession> getSession(String sessionId) {
         log.debug("Getting session by sessionId: {}", sessionId);

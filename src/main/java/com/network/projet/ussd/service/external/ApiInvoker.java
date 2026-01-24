@@ -342,42 +342,4 @@ public class ApiInvoker {
 
         return current;
     }
-
-    // ========== MÉTHODES LEGACY (COMPATIBILITÉ) ==========
-
-    /**
-     * Exécute une requête GET
-     * @deprecated Utiliser invoke() ou executeRequest() à la place
-     */
-    @Deprecated
-    public Mono<ExternalApiResponse> makeGetRequest(String url, Map<String, String> headers) {
-        return executeRequest(url, HttpMethod.GET, null, headers, DEFAULT_TIMEOUT);
-    }
-
-    /**
-     * Exécute une requête POST
-     * @deprecated Utiliser invoke() ou executeRequest() à la place
-     */
-    @Deprecated
-    public Mono<ExternalApiResponse> makePostRequest(String url, Object body, Map<String, String> headers) {
-        return executeRequest(url, HttpMethod.POST, body, headers, DEFAULT_TIMEOUT);
-    }
-
-    /**
-     * Exécute une requête PUT
-     * @deprecated Utiliser invoke() ou executeRequest() à la place
-     */
-    @Deprecated
-    public Mono<ExternalApiResponse> makePutRequest(String url, Object body, Map<String, String> headers) {
-        return executeRequest(url, HttpMethod.PUT, body, headers, DEFAULT_TIMEOUT);
-    }
-
-    /**
-     * Exécute une requête DELETE
-     * @deprecated Utiliser invoke() ou executeRequest() à la place
-     */
-    @Deprecated
-    public Mono<ExternalApiResponse> makeDeleteRequest(String url, Map<String, String> headers) {
-        return executeRequest(url, HttpMethod.DELETE, null, headers, DEFAULT_TIMEOUT);
-    }
 }

@@ -12,12 +12,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 
-/**
- * UssdGatewayService - Main USSD flow orchestrator
- * 
- * @author Network Projet Team
- * @since 2026-01-22
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -33,8 +27,8 @@ public class UssdGatewayService {
      * Processes a USSD request
      */
     public Mono<StateResult> processRequest(UssdRequest request, UssdSession session) {
-        log.info("Processing USSD Request: code={}, phone={}, sessionId={}, currentState={}",
-                request.getServiceCode(), request.getPhoneNumber(),
+        log.info("Processing USSD Request: ussdCode={}, phone={}, sessionId={}, currentState={}",
+                request.getUssdCode(), request.getPhoneNumber(),
                 session != null ? session.getSessionId() : "NEW",
                 session != null ? session.getCurrentStateId() : "N/A");
 
@@ -49,7 +43,7 @@ public class UssdGatewayService {
      * Initializes a new session
      */
     private Mono<StateResult> initializeNewSession(UssdRequest request) {
-        if (MAIN_MENU_CODE.equals(request.getServiceCode())) {
+        if (MAIN_MENU_CODE.equals(request.getUssdCode())) {
             return initializeMainMenuSession(request);
         } else {
             return initializeServiceSession(request);
@@ -71,7 +65,6 @@ public class UssdGatewayService {
                 log.debug("State execution result: nextState={}, continue={}",
                         result.getNextStateId(), result.isContinueSession());
 
-                // CORRECTION: Mettre à jour et sauvegarder la session AVANT de retourner
                 session.setCurrentStateId(result.getNextStateId());
                 session.setUpdatedAt(LocalDateTime.now());
                 
@@ -120,7 +113,7 @@ public class UssdGatewayService {
      * Initializes session for a service
      */
     private Mono<StateResult> initializeServiceSession(UssdRequest request) {
-        return serviceRegistry.getServiceByShortCode(request.getServiceCode())
+        return serviceRegistry.getServiceByShortCode(request.getUssdCode())
             .flatMap(service -> serviceRegistry.loadAutomaton(service.getCode())
                 .flatMap(automaton -> {
                     State initialState = findInitialState(automaton);
@@ -128,7 +121,7 @@ public class UssdGatewayService {
                     return sessionManager.getOrCreateSession(
                         request.getSessionId(),
                         request.getPhoneNumber(),
-                        service.getCode()
+                        request.getUssdCode()
                     ).flatMap(session -> {
                         session.setCurrentStateId(initialState.getId());
                         

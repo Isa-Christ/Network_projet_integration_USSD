@@ -305,7 +305,11 @@ src/main/java/com/network/projet/ussd/
 
 
 
-
+curl -X POST http://localhost:8080/api/admin/services \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonConfig": '"$(cat todo-service.json | jq -Rs .)"'
+  }'
 
 
 # ============================================================================
@@ -315,11 +319,10 @@ src/main/java/com/network/projet/ussd/
 curl -X POST http://localhost:8080/api/ussd \
   -H "Content-Type: application/json" \
   -d '{
-    "sessionId": null,
+    "sessionId": "testSession",
     "phoneNumber": "237690123456",
-    "serviceCode": "*500#",
-    "text": "",
-    "userInput": ""
+    "ussdCode": "*500*1#",
+    "text": ""
   }'
 
 # Réponse attendue : Le message d'accueil du service (état initial)

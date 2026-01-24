@@ -26,31 +26,33 @@ public class ServiceRegistry {
     
     /**
      * Load automaton for a service (with caching)
+     * @param code Technical service code (e.g. "todo-manager")
      */
-    public Mono<AutomatonDefinition> loadAutomaton(String serviceCode) {
-        if (automatonCache.containsKey(serviceCode)) {
-            return Mono.just(automatonCache.get(serviceCode));
+    public Mono<AutomatonDefinition> loadAutomaton(String code) {
+        if (automatonCache.containsKey(code)) {
+            return Mono.just(automatonCache.get(code));
         }
         
-        return serviceRepository.findByCode(serviceCode)
-            .switchIfEmpty(Mono.error(new ServiceNotFoundException("Service not found: " + serviceCode)))
+        return serviceRepository.findByCode(code)
+            .switchIfEmpty(Mono.error(new ServiceNotFoundException("Service not found: " + code)))
             .map(service -> {
                 try {
                     AutomatonDefinition automaton = objectMapper.readValue(
                         service.getJsonConfig(), 
                         AutomatonDefinition.class
                     );
-                    automatonCache.put(serviceCode, automaton);
+                    automatonCache.put(code, automaton);
                     return automaton;
                 } catch (Exception e) {
-                    log.error("Failed to parse automaton for service: {}", serviceCode, e);
+                    log.error("Failed to parse automaton for service: {}", code, e);
                     throw new RuntimeException("Invalid automaton JSON", e);
                 }
             });
     }
     
     /**
-     * Get service by short code
+     * Get service by USSD short code
+     * @param shortCode USSD code (e.g. "*500*1#")
      */
     public Mono<UssdService> getServiceByShortCode(String shortCode) {
         return serviceRepository.findByShortCode(shortCode)
@@ -66,23 +68,10 @@ public class ServiceRegistry {
     
     /**
      * Invalidate cache
+     * @param code Technical service code
      */
-    public void invalidateCache(String serviceCode) {
-        automatonCache.remove(serviceCode);
-        log.info("Cache invalidated for service: {}", serviceCode);
+    public void invalidateCache(String code) {
+        automatonCache.remove(code);
+        log.info("Cache invalidated for service: {}", code);
     }
-
-    // /**
-    //  * Récupère tous les services USSD disponibles
-    //  * 
-    //  * @return Flux<UssdService> Tous les services
-    //  */
-    // public Flux<UssdService> getAllServices() {
-    //     log.debug("Fetching all available USSD services");
-
-    //     return ussdServiceRepository.findAll()
-    //             .doOnNext(service -> log.trace("Found service: {} ({})", service.getName(), service.getCode()))
-    //             .doOnComplete(() -> log.debug("All services fetched"))
-    //             .doOnError(e -> log.error("Error fetching services", e));
-    // }
 }
