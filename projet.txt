@@ -311,6 +311,22 @@ curl -X POST http://localhost:8080/api/admin/services \
     "jsonConfig": '"$(cat todo-service.json | jq -Rs .)"'
   }'
 
+Response 200 OK
+2026-01-24T05:09:33.169+01:00  INFO 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.external.ApiInvoker   : API call successful: status=SUCCESS
+2026-01-24T05:09:33.170+01:00  INFO 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : API call successful for action
+2026-01-24T05:09:33.170+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> action.getOnSuccess() = ActionResult(success=false, nextState=3, responseMapping={tasks=data}, responseData=null, apiResponse=null, message=null, errorMessage=null, exception=null)
+2026-01-24T05:09:33.175+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> action.getOnSuccess().getResponseMapping() = {tasks=data}
+2026-01-24T05:09:33.177+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> extractResponseData - data type: java.util.ArrayList
+2026-01-24T05:09:33.177+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> extractResponseData - data instanceof List: true
+2026-01-24T05:09:33.178+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> extractResponseData - data instanceof Map: false
+2026-01-24T05:09:33.178+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> Extracted as List with 5 items, stored under key 'data'
+2026-01-24T05:09:33.178+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> Final extracted map: {data=[{userId=1, id=1, title=delectus aut autem, completed=false}, {userId=1, id=2, title=quis ut nam facilis et officia qui, completed=false}, {userId=1, id=3, title=fugiat veniam minus, completed=false}, {userId=1, id=4, title=et porro tempora, completed=true}, {userId=1, id=5, title=laboriosam mollitia et enim quasi adipisci quia provident illum, completed=false}]}
+2026-01-24T05:09:33.178+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> Extracted response data: {data=[{userId=1, id=1, title=delectus aut autem, completed=false}, {userId=1, id=2, title=quis ut nam facilis et officia qui, completed=false}, {userId=1, id=3, title=fugiat veniam minus, completed=false}, {userId=1, id=4, title=et porro tempora, completed=true}, {userId=1, id=5, title=laboriosam mollitia et enim quasi adipisci quia provident illum, completed=false}]}
+2026-01-24T05:09:33.178+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> Applying responseMapping: {tasks=data}
+2026-01-24T05:09:33.179+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> Mapped 'data' -> 'tasks' with 5 items items
+2026-01-24T05:09:33.179+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.AutomatonEngine  : >>> Final merged data keys: [tasks]
+2026-01-24T05:09:33.179+01:00 DEBUG 19928 --- [ussd-gateway] [or-http-epoll-4] c.n.p.ussd.service.core.SessionManager   : Storing session data: sessionId=testSession, key=_apiResponse
+
 
 # ============================================================================
 # TEST 1: REQUÊTE INITIALE - Utilisateur tape *500#

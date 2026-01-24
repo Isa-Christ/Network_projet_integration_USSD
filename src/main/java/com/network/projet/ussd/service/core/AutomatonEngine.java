@@ -1,5 +1,7 @@
 package com.network.projet.ussd.service.core;
 
+import java.util.List;
+
 import com.network.projet.ussd.domain.enums.ActionType;
 import com.network.projet.ussd.domain.enums.StateType;
 import com.network.projet.ussd.domain.model.UssdSession;
@@ -9,10 +11,13 @@ import com.network.projet.ussd.service.validation.ValidationResult;
 import com.network.projet.ussd.exception.InvalidStateException;
 import com.network.projet.ussd.service.external.ApiInvoker;
 import com.network.projet.ussd.service.validation.ValidationService;
-import com.network.projet.ussd.util.TemplateEngine;
+import com.network.projet.ussd.util.HandlebarsTemplateEngine;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
@@ -31,7 +36,7 @@ public class AutomatonEngine {
 	private final SessionManager sessionManager;
 	private final ValidationService validationService;
 	private final ApiInvoker apiInvoker;
-	private final TemplateEngine templateEngine;
+	private final HandlebarsTemplateEngine templateEngine;
 
 	/**
 	 * Executes current automaton state with user input
@@ -134,10 +139,14 @@ public class AutomatonEngine {
 							if (action.getOnSuccess() != null && action.getOnSuccess().getNextState() != null) {
 								String nextStateId = action.getOnSuccess().getNextState();
 
+								// RÉCUPÈRE LE RESPONSE MAPPING ICI
+								Map<String, String> responseMapping = action.getOnSuccess().getResponseMapping();
+
 								return storeApiResponseData(session, action, apiResponse, collectedData)
 										.map(mergedData -> ActionResult.builder()
 												.success(true)
 												.nextState(nextStateId)
+												.responseMapping(responseMapping) // AJOUTE LE MAPPING
 												.responseData(mergedData)
 												.apiResponse(apiResponse)
 												.build());
@@ -438,8 +447,33 @@ public class AutomatonEngine {
 		Map<String, Object> mergedData = new java.util.HashMap<>(collectedData);
 
 		if (action.getOnSuccess() != null) {
-			mergedData.putAll(extractResponseData(apiResponse));
+			log.debug(">>> action.getOnSuccess() = {}", action.getOnSuccess());
+			log.debug(">>> action.getOnSuccess().getResponseMapping() = {}", action.getOnSuccess().getResponseMapping());
+			Map<String, Object> extracted = extractResponseData(apiResponse);
+			log.debug(">>> Extracted response data: {}", extracted);
+
+			// Applique le responseMapping
+			Map<String, String> responseMapping = action.getOnSuccess().getResponseMapping();
+			if (responseMapping != null && !responseMapping.isEmpty()) {
+				log.debug(">>> Applying responseMapping: {}", responseMapping);
+
+				responseMapping.forEach((targetKey, sourcePath) -> {
+					Object value = extracted.get(sourcePath);
+					if (value != null) {
+						mergedData.put(targetKey, value);
+						log.debug(">>> Mapped '{}' -> '{}' with {} items", sourcePath, targetKey,
+								value instanceof List ? ((List<?>) value).size() + " items" : "1 item");
+					} else {
+						log.warn(">>> Source path '{}' not found in extracted data", sourcePath);
+					}
+				});
+			} else {
+				// Si pas de mapping, merge tout
+				mergedData.putAll(extracted);
+			}
 		}
+
+		log.debug(">>> Final merged data keys: {}", mergedData.keySet());
 
 		return sessionManager.storeSessionData(session.getSessionId(), "_apiResponse", mergedData)
 				.thenReturn(mergedData);
@@ -448,9 +482,21 @@ public class AutomatonEngine {
 	private Map<String, Object> extractResponseData(ExternalApiResponse response) {
 		Map<String, Object> extracted = new java.util.HashMap<>();
 
-		if (response.getData() instanceof Map) {
-			extracted.putAll((Map<String, Object>) response.getData());
+		Object data = response.getData();
+
+		log.debug(">>> extractResponseData - data type: {}", data != null ? data.getClass().getName() : "null");
+		log.debug(">>> extractResponseData - data instanceof List: {}", data instanceof List);
+		log.debug(">>> extractResponseData - data instanceof Map: {}", data instanceof Map);
+
+		if (data instanceof Map) {
+			extracted.putAll((Map<String, Object>) data);
+			log.debug(">>> Extracted as Map, keys: {}", extracted.keySet());
+		} else if (data instanceof List) {
+			extracted.put("data", data);
+			log.debug(">>> Extracted as List with {} items, stored under key 'data'", ((List<?>) data).size());
 		}
+
+		log.debug(">>> Final extracted map: {}", extracted);
 
 		return extracted;
 	}
