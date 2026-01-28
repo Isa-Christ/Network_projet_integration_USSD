@@ -1,56 +1,604 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Simulateur USSD Android</title>
-  <link rel="stylesheet" href="style.css">
-</head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USSD Simulator Pro</title>
+    <!-- Google Fonts pour un look moderne -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Icones pour le téléphone -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --phone-bg: #f0f2f5;
+            --screen-bg: #ffffff;
+            --keypad-bg: #ffffff;
+            --primary-color: #007aff; /* Apple Blue */
+            --ussd-overlay: rgba(0, 0, 0, 0.75);
+            --ussd-bg: #e5e5ea;
+            --text-main: #1c1c1e;
+            --text-secondary: #8e8e93;
+            --button-active: #e5e5ea;
+            --danger-color: #ff3b30;
+            --success-color: #34c759;
+        }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--phone-bg);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* ----- STRUCTURE DU TÉLÉPHONE ----- */
+        .phone-case {
+            width: 380px; /* Taille iPhone standard */
+            height: 800px;
+            background-color: #1c1c1e;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 
+                0 0 0 2px #3a3a3c,
+                0 20px 50px rgba(0,0,0,0.3),
+                inset 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Encoche / Dynamic Island */
+        .notch {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background-color: #000;
+            border-radius: 20px;
+            z-index: 100;
+        }
+
+        .phone-screen {
+            background-color: var(--screen-bg);
+            border-radius: 40px;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ----- BARRE D'ÉTAT ----- */
+        .status-bar {
+            height: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 25px;
+            background-color: transparent;
+            font-size: 14px;
+            font-weight: 600;
+            color: #000;
+            z-index: 50;
+            padding-top: 10px;
+        }
+
+        /* ----- ZONE D'AFFICHAGE SAISIE ----- */
+        .display-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        #phone-input {
+            width: 100%;
+            border: none;
+            text-align: center;
+            font-size: 36px;
+            font-weight: 500;
+            color: var(--text-main);
+            background: transparent;
+            outline: none;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .input-label {
+            font-size: 13px;
+            color: var(--primary-color);
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .input-label.visible { opacity: 1; }
+
+        /* ----- CLAVIER NUMÉRIQUE ----- */
+        .keypad {
+            padding: 20px 30px 40px;
+            background-color: var(--keypad-bg);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            justify-items: center;
+        }
+
+        .key-btn {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            border: none;
+            background-color: #f2f2f7;
+            color: var(--text-main);
+            font-size: 28px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+        }
+
+        .key-btn:active {
+            background-color: #d1d1d6;
+            transform: scale(0.95);
+        }
+
+        .key-sub {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--text-main);
+            opacity: 0.6;
+            margin-top: -2px;
+        }
+
+        /* Bouton Appel */
+        .call-btn {
+            background-color: var(--success-color);
+            color: white;
+        }
+        .call-btn:active { background-color: #2eb04d; }
+
+        /* Bouton Effacer */
+        .backspace-btn {
+            background-color: transparent !important;
+            color: var(--text-secondary);
+            font-size: 20px;
+        }
+        .backspace-btn i { font-size: 24px; }
+
+        /* Bouton Étoile/Dièse */
+        .special-key {
+            color: var(--text-secondary);
+            font-size: 24px;
+        }
+
+        /* ----- USSD OVERLAY (MODAL) ----- */
+        #ussd-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: none; /* Caché par défaut */
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        #ussd-modal.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .ussd-box {
+            width: 85%;
+            background: rgba(250, 250, 250, 0.95);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            text-align: center;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .ussd-content {
+            padding: 24px 20px 20px;
+        }
+
+        #ussd-message {
+            font-size: 15px;
+            line-height: 1.4;
+            color: var(--text-main);
+            white-space: pre-wrap; /* Garde les retours à la ligne */
+            margin-bottom: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .ussd-input-group {
+            margin-top: 10px;
+        }
+
+        #ussd-response-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #c7c7cc;
+            border-radius: 8px;
+            font-size: 16px;
+            background: #fff;
+            margin-bottom: 5px;
+        }
+
+        .ussd-actions {
+            display: flex;
+            border-top: 1px solid rgba(60, 60, 67, 0.2);
+        }
+
+        .ussd-btn {
+            flex: 1;
+            padding: 16px 0;
+            border: none;
+            background: transparent;
+            color: var(--primary-color);
+            font-size: 17px;
+            font-weight: 400;
+            cursor: pointer;
+            border-right: 1px solid rgba(60, 60, 67, 0.2);
+        }
+
+        .ussd-btn:last-child {
+            border-right: none;
+            font-weight: 600;
+        }
+
+        .ussd-btn:active {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        /* Loader */
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Toast notification pour les erreurs rapides */
+        .toast {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+
+    </style>
+</head>
 <body>
 
-  <div class="phone-frame">
+    <!-- Coque du téléphone -->
+    <div class="phone-case">
+        <div class="notch"></div>
+        
+        <!-- Écran -->
+        <div class="phone-screen">
+            
+            <!-- Barre d'état -->
+            <div class="status-bar">
+                <span>09:41</span>
+                <span>
+                    <i class="fas fa-signal"></i>
+                    <i class="fas fa-wifi" style="margin: 0 5px;"></i>
+                    <i class="fas fa-battery-full"></i>
+                </span>
+            </div>
 
-    <div id="phone-screen-content">
-      <div id="display-container"></div>
+            <!-- Affichage Principal (Dialer) -->
+            <div class="display-area">
+                <input type="text" id="phone-input" placeholder="" readonly>
+                <div class="input-label" id="add-contact">Ajouter au contact</div>
+            </div>
 
-      <div class="keypad" id="keypad">
-        <div class="key" onclick="press('1')" data-key="1">1</div>
-        <div class="key" onclick="press('2')" data-key="2">2</div>
-        <div class="key" onclick="press('3')" data-key="3">3</div>
-        <div class="key" onclick="press('4')" data-key="4">4</div>
-        <div class="key" onclick="press('5')" data-key="5">5</div>
-        <div class="key" onclick="press('6')" data-key="6">6</div>
-        <div class="key" onclick="press('7')" data-key="7">7</div>
-        <div class="key" onclick="press('8')" data-key="8">8</div>
-        <div class="key" onclick="press('9')" data-key="9">9</div>
-        <div class="key" onclick="press('*')" data-key="*">*</div>
-        <div class="key" onclick="press('0')" data-key="0">0</div>
-        <div class="key" onclick="press('#')" data-key="#">#</div>
-        <div class="call-btn" onclick="startUssd()">
-          <svg width="28" height="28" fill="white" viewBox="0 0 24 24">
-            <path
-              d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z" />
-          </svg>
+            <!-- Clavier Numérique -->
+            <div class="keypad">
+                <button class="key-btn" onclick="typeNumber('1')">1</button>
+                <button class="key-btn" onclick="typeNumber('2')">2<div class="key-sub">ABC</div></button>
+                <button class="key-btn" onclick="typeNumber('3')">3<div class="key-sub">DEF</div></button>
+                
+                <button class="key-btn" onclick="typeNumber('4')">4<div class="key-sub">GHI</div></button>
+                <button class="key-btn" onclick="typeNumber('5')">5<div class="key-sub">JKL</div></button>
+                <button class="key-btn" onclick="typeNumber('6')">6<div class="key-sub">MNO</div></button>
+                
+                <button class="key-btn" onclick="typeNumber('7')">7<div class="key-sub">PQRS</div></button>
+                <button class="key-btn" onclick="typeNumber('8')">8<div class="key-sub">TUV</div></button>
+                <button class="key-btn" onclick="typeNumber('9')">9<div class="key-sub">WXYZ</div></button>
+                
+                <button class="key-btn special-key" onclick="typeNumber('*')">*</button>
+                <button class="key-btn" onclick="typeNumber('0')">0<div class="key-sub">+</div></button>
+                <button class="key-btn special-key" onclick="typeNumber('#')">#</button>
+                
+                <button class="key-btn" style="background: transparent; cursor: default;"></button> <!-- Spacer -->
+                <button class="key-btn call-btn" onclick="initiateUSSD()">
+                    <i class="fas fa-phone"></i>
+                </button>
+                <button class="key-btn backspace-btn" onclick="deleteChar()">
+                    <i class="fas fa-backspace"></i>
+                </button>
+            </div>
+
+            <!-- Toast Notification -->
+            <div id="toast" class="toast">Code USSD envoyé...</div>
+
+            <!-- Modale USSD (L'écran gris qui apparaît) -->
+            <div id="ussd-modal">
+                <div class="ussd-box">
+                    <div class="ussd-content">
+                        <!-- Spinner de chargement -->
+                        <div id="ussd-loading" style="display: none;">
+                            <div class="loader"></div>
+                            <p style="font-size: 14px; color: #666;">Code USSD en cours...</p>
+                        </div>
+
+                        <!-- Contenu du message -->
+                        <div id="ussd-result" style="display: none;">
+                            <p id="ussd-message"></p>
+                            <div class="ussd-input-group" id="input-container">
+                                <input type="text" id="ussd-response-input" placeholder="Répondre" autofocus>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Boutons d'action -->
+                    <div class="ussd-actions" id="ussd-buttons" style="display: none;">
+                        <button class="ussd-btn" onclick="closeUssd()">Annuler</button>
+                        <button class="ussd-btn" onclick="sendResponse()" id="send-btn">Envoyer</button>
+                    </div>
+                    <!-- Bouton OK seul (pour message final) -->
+                    <div class="ussd-actions" id="ussd-ok-btn" style="display: none;">
+                        <button class="ussd-btn" onclick="closeUssd()" style="font-weight: 600;">OK</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
-      </div>
     </div>
 
-    <div id="ussd-overlay">
-      <div id="ussd-dialog">
-        <div class="ussd-title" id="ussd-title">Infos de l'opérateur</div>
-        <div class="ussd-content" id="ussd-content">Chargement...</div>
-        <input type="text" id="ussd-input" class="ussd-input" placeholder="Saisir une option" autocomplete="off">
-        <div class="ussd-actions">
-          <button class="ussd-btn" onclick="closeUssd()">Annuler</button>
-          <button class="ussd-btn" id="send-btn" onclick="handleResponse()">Envoyer</button>
-        </div>
-      </div>
-    </div>
-  </div>
+    <!-- LOGIQUE JAVASCRIPT -->
+    <script>
+        // État global
+        let sessionId = null;
+        let currentUssdCode = "";
+        const phoneNumber = "237699000000"; // Numéro simulé
 
-  <script src="script.js"></script>
+        // Éléments du DOM
+        const phoneInput = document.getElementById('phone-input');
+        const ussdModal = document.getElementById('ussd-modal');
+        const ussdLoading = document.getElementById('ussd-loading');
+        const ussdResult = document.getElementById('ussd-result');
+        const ussdMessage = document.getElementById('ussd-message');
+        const ussdResponseInput = document.getElementById('ussd-response-input');
+        const inputContainer = document.getElementById('input-container');
+        const ussdButtons = document.getElementById('ussd-buttons');
+        const ussdOkBtn = document.getElementById('ussd-ok-btn');
+        const addContactLabel = document.getElementById('add-contact');
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            // Focus sur le champ principal pour écouter le clavier physique immédiatement
+            document.body.addEventListener('keydown', handlePhysicalKeyboard);
+        });
+
+        // Gestion du Clavier Physique
+        function handlePhysicalKeyboard(e) {
+            // Si la modal USSD est ouverte, on laisse l'input de la modal gérer
+            if (ussdModal.classList.contains('active')) {
+                if (e.key === 'Enter') {
+                    if (document.getElementById('send-btn').style.display !== 'none') {
+                        sendResponse();
+                    } else {
+                        closeUssd();
+                    }
+                }
+                return;
+            }
+
+            // Sinon on gère le dialer principal
+            if (/^[0-9*#]$/.test(e.key)) {
+                typeNumber(e.key);
+            } else if (e.key === 'Backspace') {
+                deleteChar();
+            } else if (e.key === 'Enter') {
+                initiateUSSD();
+            }
+        }
+
+        // Action: Taper un chiffre
+        function typeNumber(char) {
+            if (phoneInput.value.length < 15) {
+                phoneInput.value += char;
+                updateUI();
+            }
+        }
+
+        // Action: Effacer
+        function deleteChar() {
+            phoneInput.value = phoneInput.value.slice(0, -1);
+            updateUI();
+        }
+
+        // Mise à jour interface (Label "Ajouter contact")
+        function updateUI() {
+            if (phoneInput.value.length > 0) {
+                addContactLabel.classList.add('visible');
+            } else {
+                addContactLabel.classList.remove('visible');
+            }
+        }
+
+        // Action: Lancer l'appel (Backend)
+        async function initiateUSSD() {
+            const code = phoneInput.value;
+            if (!code.startsWith('*') || !code.endsWith('#')) {
+                showToast("Ceci n'est pas un code USSD valide.");
+                return;
+            }
+
+            currentUssdCode = code;
+            sessionId = generateSessionId(); // Nouvelle session
+            
+            openModal(true); // Affiche le chargement
+
+            try {
+                const response = await callBackend(sessionId, currentUssdCode, "");
+                handleResponse(response);
+            } catch (error) {
+                console.error(error);
+                closeUssd();
+                showToast("Erreur de connexion réseau.");
+            }
+        }
+
+        // Action: Envoyer une réponse (Menu suivant)
+        async function sendResponse() {
+            const userInput = ussdResponseInput.value;
+            
+            // Effacer l'input pour effet visuel
+            ussdResponseInput.value = '';
+            
+            // Afficher chargement
+            ussdResult.style.display = 'none';
+            ussdButtons.style.display = 'none';
+            ussdLoading.style.display = 'block';
+
+            try {
+                const response = await callBackend(sessionId, currentUssdCode, userInput);
+                handleResponse(response);
+            } catch (error) {
+                closeUssd();
+                showToast("Erreur lors de l'envoi.");
+            }
+        }
+
+        // Appel API (Fetch)
+        async function callBackend(sid, code, text) {
+            const payload = {
+                sessionId: sid,
+                ussdCode: code,
+                phoneNumber: phoneNumber,
+                text: text
+            };
+
+            const res = await fetch('/api/ussd', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error('API Error');
+            return await res.json();
+        }
+
+        // Traitement de la réponse Backend
+        function handleResponse(data) {
+            ussdLoading.style.display = 'none';
+            ussdResult.style.display = 'block';
+            
+            // Afficher le message
+            ussdMessage.innerText = data.message;
+
+            if (data.continueSession) {
+                // Session continue : Afficher Input + Boutons Annuler/Envoyer
+                inputContainer.style.display = 'block';
+                ussdButtons.style.display = 'flex';
+                ussdOkBtn.style.display = 'none';
+                
+                // Focus sur l'input
+                setTimeout(() => ussdResponseInput.focus(), 100);
+            } else {
+                // Fin de session : Cacher Input + Afficher juste OK
+                inputContainer.style.display = 'none';
+                ussdButtons.style.display = 'none';
+                ussdOkBtn.style.display = 'flex';
+                
+                // Reset session
+                sessionId = null;
+            }
+        }
+
+        // Gestion de la Modal UI
+        function openModal(loading = false) {
+            ussdModal.classList.add('active');
+            if (loading) {
+                ussdLoading.style.display = 'block';
+                ussdResult.style.display = 'none';
+                ussdButtons.style.display = 'none';
+                ussdOkBtn.style.display = 'none';
+            }
+        }
+
+        function closeUssd() {
+            ussdModal.classList.remove('active');
+            ussdResponseInput.value = '';
+            // Reset input field du téléphone éventuellement
+            // phoneInput.value = ''; 
+            // updateUI();
+        }
+
+        // Utilitaires
+        function generateSessionId() {
+            return 'sess_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+    </script>
 </body>
-
 </html>
