@@ -1,4 +1,5 @@
 package com.network.projet.ussd.service.core;
+
 import java.util.List;
 import com.network.projet.ussd.domain.enums.ActionType;
 import com.network.projet.ussd.domain.enums.StateType;
@@ -282,7 +283,8 @@ public class AutomatonEngine {
 			String userInput) {
 
 		return sessionManager.storeSessionData(session.getSessionId(), currentState.getStoreAs(), userInput)
-				.then(Mono.defer(() -> {
+				.then(sessionManager.getSessionData(session.getSessionId()))
+				.flatMap(collectedData -> {
 					Transition validTransition = currentState.getTransitions().stream()
 							.filter(t -> "VALID".equals(t.getCondition()))
 							.findFirst()

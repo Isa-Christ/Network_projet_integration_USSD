@@ -101,24 +101,10 @@ public class UssdController {
                     log.info("Main menu displayed with {} services", services.size());
 
                     return UssdResponse.builder()
-                        .message("Aucun service disponible.")
-                        .continueSession(false)
-                        .build();
-                }
-                
-                StringBuilder menu = new StringBuilder("MENU PRINCIPAL\n\n");
-                for (int i = 0; i < services.size(); i++) {
-                    menu.append(String.format("%d. %s\n", i + 1, services.get(i).getName()));
-                }
-                menu.append("\n0. Quitter");
-                
-                log.info("Main menu displayed with {} services", services.size());
-                
-                return UssdResponse.builder()
-                    .message(menu.toString())
-                    .continueSession(true)
-                    .build();
-            });
+                            .message(menu.toString())
+                            .continueSession(true)
+                            .build();
+                });
     }
 
     /**
