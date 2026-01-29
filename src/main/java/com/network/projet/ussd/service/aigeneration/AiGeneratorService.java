@@ -223,7 +223,7 @@ public class AiGeneratorService {
         return Mono.fromCallable(() -> {
             try {
                 GeneratedConfigEntity entity = GeneratedConfigEntity.builder()
-                    .config_id(UUID.randomUUID())
+                    //.config_id(UUID.randomUUID())
                     .source_type(SourceType.SWAGGER_URL.name())
                     .api_structure(object_mapper.writeValueAsString(api_structure))
                     .generated_config(object_mapper.writeValueAsString(config))
@@ -251,4 +251,6 @@ public class AiGeneratorService {
             LocalDateTime.now()
         ).then();
     }
+
+    
 }

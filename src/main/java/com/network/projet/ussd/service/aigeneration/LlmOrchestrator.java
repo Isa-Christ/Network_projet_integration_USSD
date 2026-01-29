@@ -1,88 +1,3 @@
-// package com.network.projet.ussd.service.aigeneration;
-
-// import com.fasterxml.jackson.databind.ObjectMapper;
-// import com.network.projet.ussd.domain.model.aigeneration.ApiStructure;
-// import com.network.projet.ussd.domain.model.aigeneration.GenerationHints;
-// import com.network.projet.ussd.domain.model.aigeneration.WorkflowProposals;
-// import com.network.projet.ussd.exception.LlmApiException;
-// import com.network.projet.ussd.external.AnthropicApiClient;
-// import lombok.RequiredArgsConstructor;
-// import lombok.extern.slf4j.Slf4j;
-// import org.springframework.beans.factory.annotation.Value;
-// import org.springframework.stereotype.Service;
-// import reactor.core.publisher.Mono;
-// import reactor.util.retry.Retry;
-
-// import java.time.Duration;
-
-// /**
-//  * Orchestrateur LLM supportant HuggingFace (distant) et Ollama (local).
-//  * 
-//  * @author Network Project Team
-//  * @since 2025-01-26
-//  */
-// @Service
-// @RequiredArgsConstructor
-// @Slf4j
-// public class LlmOrchestrator {
-    
-//     private final AnthropicApiClient llm_client;
-//     private final PromptBuilder prompt_builder;
-//     private final HeuristicGenerator heuristic_generator;
-//     private final ObjectMapper object_mapper;
-    
-//     @Value("${ai.generator.fallback.max-retries:3}")
-//     private int max_retries;
-    
-//     @Value("${ai.generator.fallback.use-heuristic:true}")
-//     private boolean use_heuristic_fallback;
-    
-//     /**
-//      * Génère des propositions de workflows via LLM.
-//      */
-//     public Mono<WorkflowProposals> generateWorkflows(ApiStructure api_structure, GenerationHints hints) {
-//         log.info("Generating workflows with LLM");
-        
-//         String system_prompt = prompt_builder.getSystemPrompt();
-//         String user_prompt = prompt_builder.buildWorkflowGenerationPrompt(api_structure, hints);
-        
-//         return llm_client.generateJson(system_prompt, user_prompt)
-//             // .flatMap(json_response -> parseWorkflowProposals(json_response, api_structure, hints))
-//             .flatMap(this::parseWorkflowProposals)
-//             .retryWhen(Retry.backoff(max_retries, Duration.ofSeconds(2))
-//                 .filter(throwable -> throwable instanceof LlmApiException)
-//                 .doBeforeRetry(signal -> 
-//                     log.warn("Retry LLM call, attempt {}", signal.totalRetries() + 1)
-//                 ))
-//             .onErrorResume(error -> {
-//                 log.error("LLM failed after retries: {}", error.getMessage());
-//                 if (use_heuristic_fallback) {
-//                     log.info("Falling back to heuristic generation");
-//                     return heuristic_generator.generateBasicWorkflow(api_structure, hints);
-//                 }
-//                 return Mono.error(error);
-//             });
-//     }
-    
-//     // private Mono<WorkflowProposals> parseWorkflowProposals(
-//     //     String json_response, 
-//     //     ApiStructure api_structure,
-//     //     GenerationHints hints
-//     // ) {
-//     private Mono<WorkflowProposals> parseWorkflowProposals(String json_response) {
-//         return Mono.fromCallable(() -> {
-//             try {
-//                 WorkflowProposals proposals = object_mapper.readValue(json_response, WorkflowProposals.class);
-//                 log.info("Parsed {} workflow proposals", proposals.getProposals().size());
-//                 return proposals;
-//             } catch (Exception e) {
-//                 log.error("Error parsing LLM JSON response", e);
-//                 throw new LlmApiException("Réponse LLM invalide: " + e.getMessage(), e);
-//             }
-//         });
-//     }
-// }
-
 package com.network.projet.ussd.service.aigeneration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -126,7 +41,7 @@ public class LlmOrchestrator {
      * Génère des propositions de workflows via LLM.
      */
     public Mono<WorkflowProposals> generateWorkflows(ApiStructure api_structure, GenerationHints hints) {
-        log.info("🚀 Starting workflow generation with LLM");
+        log.info(" Starting workflow generation with LLM");
         log.debug("API Structure: {} endpoints", api_structure.getEndpoints().size());
         log.debug("Hints: service_name={}, complexity={}", 
                  hints.getService_name(), hints.getComplexity());
@@ -134,9 +49,9 @@ public class LlmOrchestrator {
         String system_prompt = prompt_builder.getSystemPrompt();
         String user_prompt = prompt_builder.buildWorkflowGenerationPrompt(api_structure, hints);
         
-        log.debug("📝 System prompt length: {} chars", system_prompt.length());
-        log.debug("📝 User prompt length: {} chars", user_prompt.length());
-        log.debug("📝 Total prompt length: {} chars", system_prompt.length() + user_prompt.length());
+        log.debug(" System prompt length: {} chars", system_prompt.length());
+        log.debug(" User prompt length: {} chars", user_prompt.length());
+        log.debug(" Total prompt length: {} chars", system_prompt.length() + user_prompt.length());
         
         // Log un extrait du prompt pour debugging
         log.debug("📄 User prompt preview (first 500 chars):\n{}", 

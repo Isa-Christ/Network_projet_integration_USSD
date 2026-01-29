@@ -7,7 +7,7 @@ import java.util.*;
 /**
  * Algorithmes de graphes pour validation de configurations.
  * 
- * @author Your Name
+ * @author Network Project Team
  * @since 2025-01-26
  */
 public class GraphAlgorithms {

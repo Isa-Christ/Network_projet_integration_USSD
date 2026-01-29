@@ -15,12 +15,12 @@
                 <constraints nullable="false"/>
             </column>
             <column name="source_url" type="VARCHAR(500)"/>
-            <column name="api_structure" type="JSONB"/>
+            <column name="api_structure" type="TEXT"/>
             <column name="selected_proposal_index" type="INTEGER"/>
-            <column name="generated_config" type="JSONB">
+            <column name="generated_config" type="TEXT">
                 <constraints nullable="false"/>
             </column>
-            <column name="validation_report" type="JSONB"/>
+            <column name="validation_report" type="TEXT"/>
             <column name="status" type="VARCHAR(20)">
                 <constraints nullable="false"/>
             </column>

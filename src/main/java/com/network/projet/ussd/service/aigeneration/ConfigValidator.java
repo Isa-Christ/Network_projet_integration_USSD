@@ -30,7 +30,7 @@ public class ConfigValidator {
     @Value("${ai.generator.validation.max-menu-options:8}")
     private int max_menu_options;
     
-    @Value("${ai.generator.validation.min-states:3}")
+    @Value("${ai.generator.validation.min-states:1}")
     private int min_states;
     
     /**

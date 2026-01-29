@@ -128,7 +128,7 @@ TYPES D'ÉTATS DISPONIBLES:
         // Règles de conception
         prompt.append("=== RÈGLES DE CONCEPTION ===\n");
         prompt.append("- IDs d'états: numérotation séquentielle (1, 2, 3..., 99 pour sortie)\n");
-        prompt.append("- Un seul état avec isInitial: true\n");
+        prompt.append("- Un seul état avec is_initial: true\n");
         prompt.append("- Tous les états doivent être accessibles (pas d'états orphelins)\n");
         prompt.append("- Messages USSD ≤ 182 caractères MAXIMUM\n");
         prompt.append("- Transitions cohérentes: chaque input/condition doit avoir un nextState valide\n");
@@ -174,7 +174,11 @@ TYPES D'ÉTATS DISPONIBLES:
         // Structure JSON exacte attendue
         prompt.append("=== STRUCTURE JSON EXACTE À PRODUIRE ===\n");
         prompt.append(getExpectedJsonStructure());
-        
+
+        prompt.append("\n⚠️ GÉNÈRE LA CONFIG FINALE COMPLÈTE (pas de proposals intermédiaire !)\n");
+        prompt.append("Utilise la baseUrl de l'API fournie.\n");
+        prompt.append("Adapte les endpoints aux opérations CRUD de l'API.\n");
+
         prompt.append("\n=== CHECKLIST FINALE AVANT GÉNÉRATION ===\n");
         prompt.append("Vérifie que ton JSON contient:\n");
         prompt.append("☐ serviceCode, serviceName, version, description\n");
@@ -184,7 +188,7 @@ TYPES D'ÉTATS DISPONIBLES:
         prompt.append("☐ Chaque état a: id, name, type, message, transitions\n");
         prompt.append("☐ États INPUT ont: validation, storeAs\n");
         prompt.append("☐ États PROCESSING ont: action avec type, method, endpoint, onSuccess, onError\n");
-        prompt.append("☐ Premier état a isInitial: true\n");
+        prompt.append("☐ Ceci est très important : Premier état a 'is_initial': true\n");
         prompt.append("☐ État 99 est de type FINAL avec transitions vides\n");
         prompt.append("☐ Toutes les transitions pointent vers des états existants\n");
         prompt.append("☐ Messages ≤ 182 caractères\n");
@@ -196,7 +200,7 @@ TYPES D'ÉTATS DISPONIBLES:
     }
 
     public String getSystemPrompt() {
-        return SYSTEM_PROMPT;
+        return SYSTEM_PROMPT ;
     }
 
     private String getExpectedJsonStructure() {
@@ -361,4 +365,66 @@ TYPES D'ÉTATS DISPONIBLES:
 - Transitions: {"input": "1", "nextState": "2"} OU {"condition": "SUCCESS", "nextState": "3"}
 """;
     }
+
+    // private String getExpectedJsonStructure() {
+    // return """
+    //   {
+    //     "serviceCode": "todo-manager",
+    //     "serviceName": "Todo Manager Service",
+    //     "version": "1.0.0",
+    //     "description": "Task management service",
+        
+    //     "apiConfig": {
+    //       "baseUrl": "https://jsonplaceholder.typicode.com",
+    //       "timeout": 10000,
+    //       "retryAttempts": 2,
+    //       "authentication": {
+    //         "type": "NONE"
+    //       }
+    //     },
+
+    //     "sessionConfig": {
+    //       "timeoutSeconds": 60,
+    //       "maxInactivitySeconds": 30
+    //     },
+        
+    //     "states": [
+    //       {
+    //         "id": "1",
+    //         "name": "TodoMainMenu",
+    //         "type": "MENU",
+    //         "isInitial": true,
+    //         "message": "Todo Manager\\n1. View my tasks\\n2. Add new task\\n3. Mark as complete\\n4. Delete task\\n0. Exit",
+    //         "transitions": [
+    //           {"input": "1", "nextState": "2"},
+    //           {"input": "2", "nextState": "5"},
+    //           {"input": "3", "nextState": "8"},
+    //           {"input": "4", "nextState": "11"},
+    //           {"input": "0", "nextState": "99"}
+    //         ]
+    //       },
+    //       // ... (le reste du todo-service.json, copie TOUT le JSON complet ici)
+    //       {
+    //         "id": "99",
+    //         "name": "ExitMessage",
+    //         "type": "FINAL",
+    //         "message": "Thank you for using Todo Manager!\\n\\nDial *123*1# anytime to return.",
+    //         "transitions": []
+    //       }
+    //     ]
+    //   }
+
+    //   ******STRUCTURE CRITIQUE (RESPECTE EXACTEMENT)****** :
+    //   - Objet racine avec serviceCode, serviceName, version, description
+    //   - apiConfig avec baseUrl, timeout, retryAttempts, authentication.type
+    //   - sessionConfig avec timeoutSeconds, maxInactivitySeconds
+    //   - states : ARRAY d'OBJETS (id, name, type, isInitial, message, transitions, action si PROCESSING)
+    //   - Pour PROCESSING : action avec type=API_CALL, method, endpoint, onSuccess (nextState + responseMapping), onError
+    //   - Pour INPUT : validation + storeAs
+    //   - Pour MENU : transitions avec input/nextState
+    //   - Messages ≤ 182 chars
+    //   - Transitions : {"input": "...", "nextState": "..."} ou {"condition": "SUCCESS", "nextState": "..."}
+    //   """;
+    //   }
+
 }
