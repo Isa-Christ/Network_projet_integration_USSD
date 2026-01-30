@@ -10,119 +10,108 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Nettoie la structure API en supprimant les données nulles et inutiles.
- * Réduit la taille du JSON envoyé au LLM pour meilleure clarté.
- * 
- * @author Network Project Team
- * @since 2025-01-28
+ * Utilitaire pour nettoyer ApiStructure avant envoi au LLM
+ * - Supprime les champs null / vides / inutiles
+ * - Réduit la taille du JSON (moins de tokens)
+ * - Calcule la taille estimée
  */
 @Component
 @Slf4j
 public class ApiStructureCleaner {
-    
+
     /**
-     * Nettoie l'ApiStructure en supprimant tous les champs nulles/vides.
-     * Conserve uniquement les données essentielles pour le LLM.
+     * Nettoie l'ApiStructure pour le LLM
      */
-    public ApiStructure cleanForLlm(ApiStructure apiStructure) {
-        if (apiStructure == null) {
+    public ApiStructure cleanForLlm(ApiStructure original) {
+        if (original == null) {
             return null;
         }
-        
-        log.debug("Cleaning ApiStructure: {} endpoints before filtering", 
-            apiStructure.getEndpoints().size());
-        
-        // Nettoyer les endpoints
-        Map<String, Endpoint> cleanedEndpoints = apiStructure.getEndpoints()
-            .entrySet()
-            .stream()
-            .filter(entry -> entry.getValue() != null)
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> cleanEndpoint(entry.getValue())
-            ));
-        
-        // Créer une copie nettoyée
+
+        log.debug("Nettoyage ApiStructure - {} endpoints avant", original.getEndpoints().size());
+
+        // Nettoyer chaque endpoint
+        Map<String, Endpoint> cleanedEndpoints = original.getEndpoints().entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> cleanEndpoint(e.getValue())
+                ));
+
+        // Construire une nouvelle structure nettoyée
         ApiStructure cleaned = ApiStructure.builder()
-            .api_title(apiStructure.getApi_title())
-            .api_version(apiStructure.getApi_version())
-            .base_url(apiStructure.getBase_url())
-            .endpoints(cleanedEndpoints)
-            .schemas(new HashMap<>())  // Optionnel: vider ou filtrer
-            .authentication_type(apiStructure.getAuthentication_type())
-            .build();
-        
-        log.info("Cleaned ApiStructure: {} endpoints after filtering (removed {} null/empty)",
-            cleanedEndpoints.size(),
-            apiStructure.getEndpoints().size() - cleanedEndpoints.size());
-        
+                .api_title(original.getApi_title())
+                .api_version(original.getApi_version())
+                .base_url(original.getBase_url())
+                .authentication_type(original.getAuthentication_type())
+                .endpoints(cleanedEndpoints)
+                .schemas(new HashMap<>())  // On vide les schemas pour économiser (ou filtre si besoin)
+                .build();
+
+        log.info("ApiStructure nettoyée : {} → {} endpoints (réduction: {}%)",
+                original.getEndpoints().size(),
+                cleanedEndpoints.size(),
+                original.getEndpoints().size() > 0 
+                    ? (int) ((original.getEndpoints().size() - cleanedEndpoints.size()) * 100.0 / original.getEndpoints().size())
+                    : 0);
+
         return cleaned;
     }
-    
+
     /**
-     * Nettoie un endpoint en supprimant les champs nulles/vides/inutiles.
+     * Nettoie un seul Endpoint
      */
     private Endpoint cleanEndpoint(Endpoint endpoint) {
-        if (endpoint == null) {
-            return null;
-        }
-        
+        if (endpoint == null) return null;
+
         return Endpoint.builder()
-            .operation_id(endpoint.getOperation_id())
-            .path(endpoint.getPath())
-            .method(endpoint.getMethod())
-            .summary(endpoint.getSummary())
-            // description: garder seulement si pertinent
-            .description(isEmpty(endpoint.getDescription()) ? null : endpoint.getDescription())
-            .type(endpoint.getType())
-            // parameters: garder seulement ceux avec valeurs significatives
-            .parameters(!endpoint.getParameters().isEmpty() ? 
-                endpoint.getParameters().stream()
-                    .filter(p -> !isEmpty(p.getName()))
-                    .collect(Collectors.toList()) 
-                : new java.util.ArrayList<>())
-            .has_request_body(endpoint.isHas_request_body())
-            // request_body_schema: garder seulement si significatif
-            .request_body_schema(isEmpty(endpoint.getRequest_body_schema()) ? null : endpoint.getRequest_body_schema())
-            // response_schema: garder seulement si significatif
-            .response_schema(isEmpty(endpoint.getResponse_schema()) ? null : endpoint.getResponse_schema())
-            .response_is_array(endpoint.isResponse_is_array())
-            .build();
+                .operation_id(endpoint.getOperation_id())
+                .path(endpoint.getPath())
+                .method(endpoint.getMethod())
+                .summary(endpoint.getSummary())
+                .description(isBlank(endpoint.getDescription()) ? null : endpoint.getDescription())
+                .type(endpoint.getType())
+                .parameters(endpoint.getParameters().stream()
+                        .filter(p -> p != null && !isBlank(p.getName()))
+                        .collect(Collectors.toList()))
+                .has_request_body(endpoint.isHas_request_body())
+                .request_body_schema(isBlank(endpoint.getRequest_body_schema()) ? null : endpoint.getRequest_body_schema())
+                .response_schema(isBlank(endpoint.getResponse_schema()) ? null : endpoint.getResponse_schema())
+                .response_is_array(endpoint.isResponse_is_array())
+                .build();
     }
-    
+
     /**
-     * Vérifie si une string est vide/null/whitespace.
+     * Estime la taille en caractères (approximation)
      */
-    private boolean isEmpty(String value) {
-        return value == null || value.trim().isEmpty();
-    }
-    
-    /**
-     * Retourne la taille estimée en caractères du JSON.
-     * Utile pour vérifier la réduction.
-     */
-    public long estimateSize(ApiStructure apiStructure) {
-        if (apiStructure == null) return 0;
-        
-        // Estimation simple : sum des longueurs de strings
+    public long estimateSize(ApiStructure structure) {
+        if (structure == null) return 0;
+
         long size = 0;
-        
-        if (apiStructure.getApi_title() != null) size += apiStructure.getApi_title().length();
-        if (apiStructure.getApi_version() != null) size += apiStructure.getApi_version().length();
-        if (apiStructure.getBase_url() != null) size += apiStructure.getBase_url().length();
-        
-        size += apiStructure.getEndpoints().values().stream()
-            .mapToLong(ep -> {
-                long epSize = 0;
-                if (ep.getOperation_id() != null) epSize += ep.getOperation_id().length();
-                if (ep.getPath() != null) epSize += ep.getPath().length();
-                if (ep.getSummary() != null) epSize += ep.getSummary().length();
-                if (ep.getDescription() != null) epSize += ep.getDescription().length();
-                epSize += ep.getParameters().size() * 50; // Estimation par paramètre
-                return epSize;
-            })
-            .sum();
-        
+
+        if (structure.getApi_title() != null) size += structure.getApi_title().length();
+        if (structure.getApi_version() != null) size += structure.getApi_version().length();
+        if (structure.getBase_url() != null) size += structure.getBase_url().length();
+        if (structure.getAuthentication_type() != null) size += structure.getAuthentication_type().length();
+
+        size += structure.getEndpoints().values().stream()
+                .mapToLong(this::estimateEndpointSize)
+                .sum();
+
         return size;
+    }
+
+    private long estimateEndpointSize(Endpoint ep) {
+        if (ep == null) return 0;
+        long size = 0;
+        if (ep.getOperation_id() != null) size += ep.getOperation_id().length();
+        if (ep.getPath() != null) size += ep.getPath().length();
+        if (ep.getSummary() != null) size += ep.getSummary().length();
+        if (ep.getDescription() != null) size += ep.getDescription().length();
+        size += ep.getParameters().size() * 80; // estimation moyenne par paramètre
+        return size;
+    }
+
+    private boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
     }
 }

@@ -1,13 +1,11 @@
 package com.network.projet.ussd.service.aigeneration;
 
-//import com.network.projet.ussd.domain.enums.EndpointType;
-//import com.network.projet.ussd.domain.enums.ProposalComplexity;
 import com.network.projet.ussd.domain.enums.StateType;
 import com.network.projet.ussd.domain.model.aigeneration.WorkflowProposal;
 import com.network.projet.ussd.domain.model.aigeneration.WorkflowProposals;
 import com.network.projet.ussd.domain.model.aigeneration.WorkflowState;
+import com.network.projet.ussd.domain.model.aigeneration.WorkflowTransition;
 import com.network.projet.ussd.domain.model.aigeneration.ApiStructure;
-import com.network.projet.ussd.domain.model.aigeneration.WorkflowState;
 import com.network.projet.ussd.domain.model.aigeneration.GenerationHints;
 import com.network.projet.ussd.domain.model.aigeneration.Endpoint;
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +20,14 @@ import java.util.Map;
 /**
  * Générateur heuristique (fallback si LLM échoue).
  * 
- * @author Your Name
+ * @author Network Project Team
  * @since 2025-01-26
  */
 @Service
 @Slf4j
 public class HeuristicGenerator {
+    int OPTIONS_NUMBER = 7;
+    int ID_NUMBER = 3;
     
     /**
      * Génère un workflow basique sans LLM.
@@ -68,23 +68,23 @@ public class HeuristicGenerator {
         
         states.add(main_menu);
         
-        // Pour chaque endpoint, créer des états simples
-        // int option_number = 1;
-        // for (Endpoint endpoint : api_structure.getEndpoints().values()) {
-        //     if (option_number > 7) break; // Max 7 options
+        //Pour chaque endpoint, créer des états simples
+        int option_number = 1;
+        for (Endpoint endpoint : api_structure.getEndpoints().values()) {
+            if (option_number > OPTIONS_NUMBER) break; // Max 7 options
             
-        //     // Ajouter transition au menu principal
-        //     Map<String, String> transition = new HashMap<>();
-        //     transition.put("input", String.valueOf(option_number));
-        //     transition.put("nextState", String.valueOf(state_id));
-        //     main_menu.getTransitions().addAll(transition);
+            // Ajouter transition au menu principal
+            Map<String, String> transition = new HashMap<>();
+            transition.put("input", String.valueOf(option_number));
+            transition.put("nextState", String.valueOf(state_id));
+            main_menu.getTransitions().add((WorkflowTransition) transition);
             
-        //     // Créer états pour cet endpoint
-        //     states.addAll(generateStatesForEndpoint(endpoint, state_id, api_structure));
+            // Créer états pour cet endpoint
+            states.addAll(generateStatesForEndpoint(endpoint, state_id, api_structure));
             
-        //     option_number++;
-        //     state_id += 3; // Réserver 3 IDs par endpoint
-        // }
+            option_number++;
+            state_id += ID_NUMBER; // Réserver 3 IDs par endpoint
+        }
         
         // État de sortie
         WorkflowState exit_state = WorkflowState.builder()
@@ -124,7 +124,9 @@ public class HeuristicGenerator {
     }
     
     private String getActionText(Endpoint endpoint) {
-        String summary = endpoint.getSummary() != null ? endpoint.getSummary() : endpoint.getOperation_id();
+        String summary = endpoint.getSummary() != null ? 
+                         endpoint.getSummary() : 
+                         endpoint.getOperation_id();
         
         return switch (endpoint.getType()) {
             case LIST -> "Voir " + summary;
@@ -136,27 +138,31 @@ public class HeuristicGenerator {
         };
     }
     
-    private List<WorkflowState> generateStatesForEndpoint(Endpoint endpoint, int start_id, ApiStructure api_structure) {
+    private List<WorkflowState> generateStatesForEndpoint(
+        Endpoint endpoint, 
+        int start_id, 
+        ApiStructure api_structure
+    ) {
         List<WorkflowState> states = new ArrayList<>();
         
         // Si l'endpoint a des paramètres requis, créer état INPUT
-        // if (endpoint.hasRequiredParameters()) {
-        //     WorkflowState input_state = WorkflowState.builder()
-        //         .id(String.valueOf(start_id))
-        //         .name("Input" + endpoint.getOperation_id())
-        //         .type(StateType.INPUT)
-        //         .message("Entrez " + endpoint.getSummary() + ":")
-        //         .linked_endpoint(endpoint.getOperation_id())
-        //         .transitions(new ArrayList<>())
-        //         .build();
+        if (endpoint.hasRequiredParameters()) {
+            WorkflowState input_state = WorkflowState.builder()
+                .id(String.valueOf(start_id))
+                .name("Input" + endpoint.getOperation_id())
+                .type(StateType.INPUT)
+                .message("Entrez " + endpoint.getSummary() + ":")
+                .linked_endpoint(endpoint.getOperation_id())
+                .transitions(new ArrayList<>())
+                .build();
             
-        //     Map<String, String> transition = new HashMap<>();
-        //     transition.put("condition", "VALID");
-        //     transition.put("nextState", String.valueOf(start_id + 1));
-        //     input_state.getTransitions().add(transition);
+            Map<String, String> transition = new HashMap<>();
+            transition.put("condition", "VALID");
+            transition.put("nextState", String.valueOf(start_id + 1));
+            input_state.getTransitions().add((WorkflowTransition) transition);
             
-        //     states.add(input_state);
-        // }
+            states.add(input_state);
+        }
         
         // État PROCESSING pour appel API
         WorkflowState processing_state = WorkflowState.builder()
@@ -169,9 +175,9 @@ public class HeuristicGenerator {
             .build();
         
         Map<String, String> success_transition = new HashMap<>();
-        // success_transition.put("condition", "SUCCESS");
-        // success_transition.put("nextState", String.valueOf(start_id + 2));
-        // processing_state.getTransitions().add(success_transition);
+        success_transition.put("condition", "SUCCESS");
+        success_transition.put("nextState", String.valueOf(start_id + 2));
+        processing_state.getTransitions().add((WorkflowTransition)success_transition);
         
         states.add(processing_state);
         
@@ -186,9 +192,9 @@ public class HeuristicGenerator {
             .build();
         
         Map<String, String> back_transition = new HashMap<>();
-        // back_transition.put("input", "0");
-        // back_transition.put("nextState", "1");
-        // display_state.getTransitions().add(back_transition);
+        back_transition.put("input", "0");
+        back_transition.put("nextState", "1");
+        display_state.getTransitions().add((WorkflowTransition)back_transition);
         
         states.add(display_state);
         

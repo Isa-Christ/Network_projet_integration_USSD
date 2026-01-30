@@ -34,7 +34,7 @@ public class AiGeneratorConfig {
             .defaultHeader("Authorization", "Bearer " + huggingface_api_key)
             .codecs(configurer -> configurer
                 .defaultCodecs()
-                .maxInMemorySize(10 * 1024 * 1024))  // 10MB buffer
+                .maxInMemorySize(300 * 1024 * 1024))  // 10MB buffer
             .build();
     }
 }

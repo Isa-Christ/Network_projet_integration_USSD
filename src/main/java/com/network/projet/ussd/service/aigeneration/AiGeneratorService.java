@@ -11,7 +11,6 @@ import com.network.projet.ussd.exception.AiGenerationException;
 import com.network.projet.ussd.external.SwaggerFetcher;
 import com.network.projet.ussd.repository.GeneratedConfigEntity;
 import com.network.projet.ussd.repository.GeneratedConfigRepository;
-import com.network.projet.ussd.repository.GenerationHistoryEntity;
 import com.network.projet.ussd.repository.GenerationHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

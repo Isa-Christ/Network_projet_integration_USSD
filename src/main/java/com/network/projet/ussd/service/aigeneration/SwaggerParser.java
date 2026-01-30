@@ -22,7 +22,7 @@ import java.util.*;
 /**
  * Parser pour fichiers Swagger/OpenAPI.
  * 
- * @author Your Name
+ * @author Network Project Team
  * @since 2025-01-26
  */
 @Service
@@ -107,7 +107,10 @@ public class SwaggerParser {
         HttpMethod method = convertHttpMethod(http_method);
         
         Endpoint endpoint = Endpoint.builder()
-            .operation_id(operation.getOperationId() != null ? operation.getOperationId() : generateOperationId(path, method))
+            .operation_id(operation.getOperationId() != null ?
+                          operation.getOperationId() :
+                          generateOperationId(path, method)
+                        )
             .path(path)
             .method(method)
             .summary(operation.getSummary())

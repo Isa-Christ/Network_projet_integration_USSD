@@ -2,7 +2,6 @@ package com.network.projet.ussd.util;
 
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.Helper;
-import com.github.jknack.handlebars.Options;
 import com.github.jknack.handlebars.Template;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
