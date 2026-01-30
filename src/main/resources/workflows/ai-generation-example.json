@@ -1,0 +1,64 @@
+{
+  "serviceCode": "ai-generated-todo",
+  "serviceName": "Todo Manager (AI Generated)",
+  "version": "1.0.0",
+  "description": "Généré automatiquement par AI Generator",
+  
+  "apiConfig": {
+    "baseUrl": "https://jsonplaceholder.typicode.com",
+    "timeout": 10000,
+    "retryAttempts": 2,
+    "authentication": {
+      "type": "NONE"
+    }
+  },
+  
+  "sessionConfig": {
+    "timeoutSeconds": 60,
+    "maxInactivitySeconds": 30
+  },
+  
+  "states": [
+    {
+      "id": "1",
+      "name": "MainMenu",
+      "type": "MENU",
+      "isInitial": true,
+      "message": "Todo Manager\n1. Voir tâches\n2. Créer tâche\n0. Quitter",
+      "transitions": [
+        {"input": "1", "nextState": "2"},
+        {"input": "2", "nextState": "5"},
+        {"input": "0", "nextState": "99"}
+      ]
+    },
+    {
+      "id": "2",
+      "name": "LoadTodos",
+      "type": "PROCESSING",
+      "message": "Chargement...",
+      "action": {
+        "type": "API_CALL",
+        "method": "GET",
+        "endpoint": "/todos?_limit=5",
+        "onSuccess": {
+          "nextState": "3",
+          "responseMapping": {"tasks": "data"}
+        }
+      }
+    },
+    {
+      "id": "3",
+      "name": "DisplayTodos",
+      "type": "DISPLAY",
+      "message": "Vos tâches:\n{{#each tasks}}\n{{id}}. {{title}}\n{{/each}}\n\n0. Retour",
+      "transitions": [{"input": "0", "nextState": "1"}]
+    },
+    {
+      "id": "99",
+      "name": "Exit",
+      "type": "FINAL",
+      "message": "À bientôt!",
+      "transitions": []
+    }
+  ]
+}

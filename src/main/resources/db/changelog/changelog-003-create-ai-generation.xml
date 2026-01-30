@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <!-- Table: generated_configs -->
+    <changeSet id="003-001-create-generated-configs" author="network-project-team">
+        <createTable tableName="generated_configs">
+            <column name="config_id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="source_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_url" type="VARCHAR(500)"/>
+            <column name="api_structure" type="TEXT"/>
+            <column name="selected_proposal_index" type="INTEGER"/>
+            <column name="generated_config" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="validation_report" type="TEXT"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+    </changeSet>
+
+    <changeSet id="add-constraints-generated-configs" author="network-project">
+        <sql>
+            ALTER TABLE generated_configs ADD CONSTRAINT chk_source_type CHECK (source_type IN ('SWAGGER_URL', 'SWAGGER_FILE', 'POSTMAN'));
+            ALTER TABLE generated_configs ADD CONSTRAINT chk_status CHECK (status IN ('ANALYZING', 'GENERATING', 'COMPLETED', 'FAILED'));
+        </sql>
+    </changeSet>
+
+    <changeSet id="add-indexes-generated-configs" author="network-project">
+        <createIndex indexName="idx_generated_configs_status" tableName="generated_configs">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_generated_configs_created" tableName="generated_configs">
+            <column name="created_at" descending="true"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Table: generation_history -->
+    <changeSet id="003-002-create-generation-history" author="network-project-team">
+        <createTable tableName="generation_history">
+            <column name="history_id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="config_id" type="UUID">
+                <constraints nullable="true"
+                    foreignKeyName="fk_gen_history_config"
+                    references="generated_configs(config_id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="admin_user" type="VARCHAR(100)"/>
+            <column name="action" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="input_tokens" type="INTEGER"/>
+            <column name="output_tokens" type="INTEGER"/>
+            <column name="processing_time_ms" type="BIGINT"/>
+            <column name="error_message" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE generation_history ADD CONSTRAINT chk_action CHECK (action IN ('ANALYZE', 'GENERATE_PROPOSALS', 'GENERATE_CONFIG', 'VALIDATE'));
+        </sql>
+
+        <createIndex indexName="idx_gen_history_config" tableName="generation_history">
+            <column name="config_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_gen_history_created" tableName="generation_history">
+            <column name="created_at" descending="true"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

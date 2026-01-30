@@ -63,4 +63,58 @@ public class GlobalExceptionHandler {
         error.put("message", message);
         return error;
     }
+
+    // AJOUTER à la fin de GlobalExceptionHandler.java existant
+
+    /**
+     * Gestion exception génération IA.
+     */
+    @ExceptionHandler(AiGenerationException.class)
+    public ResponseEntity<Map<String, Object>> handleAiGenerationException(
+        AiGenerationException ex
+    ) {
+        Map<String, Object> error_response = new HashMap<>();
+        error_response.put("error", "AI_GENERATION_ERROR");
+        error_response.put("message", ex.getMessage());
+        error_response.put("timestamp", LocalDateTime.now());
+        
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(error_response);
+    }
+    
+    /**
+     * Gestion exception parsing Swagger.
+     */
+    @ExceptionHandler(SwaggerParseException.class)
+    public ResponseEntity<Map<String, Object>> handleSwaggerParseException(
+        SwaggerParseException ex
+    ) {
+        Map<String, Object> error_response = new HashMap<>();
+        error_response.put("error", "SWAGGER_PARSE_ERROR");
+        error_response.put("message", ex.getMessage());
+        error_response.put("timestamp", LocalDateTime.now());
+        
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(error_response);
+    }
+    
+    /**
+     * Gestion exception LLM API.
+     */
+    @ExceptionHandler(LlmApiException.class)
+    public ResponseEntity<Map<String, Object>> handleLlmApiException(
+        LlmApiException ex
+    ) {
+        Map<String, Object> error_response = new HashMap<>();
+        error_response.put("error", "LLM_API_ERROR");
+        error_response.put("message", ex.getMessage());
+        error_response.put("hint", "Vérifiez que Ollama est démarré (http://localhost:11434)");
+        error_response.put("timestamp", LocalDateTime.now());
+        
+        return ResponseEntity
+            .status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(error_response);
+    }
 }

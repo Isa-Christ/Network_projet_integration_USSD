@@ -7,4 +7,5 @@
 
     <include file="db/changelog/changelog-001-create-ussd-services.xml"/>
     <include file="db/changelog/changelog-002-create-ussd-sessions.xml"/>
+    <include file="db/changelog/changelog-003-create-ai-generation.xml"/>
 </databaseChangeLog>

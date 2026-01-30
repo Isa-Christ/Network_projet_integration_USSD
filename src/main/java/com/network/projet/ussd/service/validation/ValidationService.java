@@ -39,6 +39,7 @@ public class ValidationService {
                 case NUMERIC -> validateNumeric(trimmedInput);
                 case ALPHANUMERIC -> validateAlphanumeric(trimmedInput);
                 case TEXT -> validateText(trimmedInput);
+                case CUSTOM -> validateEmail(trimmedInput);
             };
         });
     }
