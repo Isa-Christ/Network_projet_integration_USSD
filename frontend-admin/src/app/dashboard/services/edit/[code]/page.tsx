@@ -29,9 +29,9 @@ export default function EditServicePage() {
         try {
             const data = await getService(code);
             setService(data);
-            // Le backend ne retourne pas jsonConfig dans ServiceInfoResponse
-            // On va devoir le reconstruire ou afficher un message
-            setJsonConfig('// Configuration JSON non disponible via l\'API\n// Veuillez saisir la nouvelle configuration');
+            if (data.jsonConfig) {
+                setJsonConfig(data.jsonConfig);
+            }
         } catch (error) {
             toast.error('Erreur lors du chargement du service');
             console.error(error);
@@ -87,11 +87,11 @@ export default function EditServicePage() {
 
         try {
             await updateService(code, { jsonConfig });
-            toast.success('Service mis à jour avec succès !');
+            toast.success('Service mis à jour avec succès !', { id: 'edit-service-success' });
             router.push('/dashboard/services/list');
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || 'Erreur lors de la mise à jour du service';
-            toast.error(errorMessage);
+            const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la mise à jour du service';
+            toast.error(errorMessage, { id: 'edit-service-error' });
         } finally {
             setIsSaving(false);
         }
@@ -190,8 +190,8 @@ export default function EditServicePage() {
                             value={jsonConfig}
                             onChange={(e) => handleJsonChange(e.target.value)}
                             className={`w-full h-96 p-4 font-mono text-sm border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${!isValid
-                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50'
-                                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200'
+                                ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50'
+                                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200'
                                 }`}
                             placeholder='{\n  "serviceCode": "MY_SERVICE",\n  "serviceName": "Mon Service",\n  ...\n}'
                         />

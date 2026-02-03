@@ -1,0 +1,1140 @@
+{
+  "serviceCode": "pickndrop",
+  "serviceName": "PickNDrop Delivery Service",
+  "version": "2.0.0",
+  "description": "Service de livraison de colis au Cameroun",
+  "apiConfig": {
+    "baseUrl": "https://pickndropback.onrender.com/api",
+    "timeout": 60000,
+    "retryAttempts": 2,
+    "authentication": {
+      "type": "BEARER",
+      "credentials": {
+        "tokenSource": "SESSION",
+        "sessionKey": "authToken"
+      }
+    }
+  },
+  "sessionConfig": {
+    "timeoutSeconds": 180,
+    "maxInactivitySeconds": 90
+  },
+  "states": [
+    {
+      "id": "1",
+      "name": "InitialAuthCheck",
+      "type": "PROCESSING",
+      "isInitial": true,
+      "message": "Chargement...",
+      "preActions": [
+        {
+          "type": "STORAGE_LOAD",
+          "storageKey": "auth_token",
+          "storeAs": "authToken"
+        }
+      ],
+      "transitions": [
+        {
+          "condition": "{{authToken != null}}",
+          "nextState": "50"
+        },
+        {
+          "condition": "{{authToken == null}}",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "name": "UnauthenticatedMenu",
+      "type": "MENU",
+      "message": "Bienvenue sur PickNDrop\n1. Se connecter\n2. Creer un compte\n3. Suivre un colis\n4. Tarifs\n5. Aide",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "48"
+        },
+        {
+          "input": "2",
+          "nextState": "52"
+        },
+        {
+          "input": "3",
+          "nextState": "3"
+        },
+        {
+          "input": "4",
+          "nextState": "4"
+        },
+        {
+          "input": "5",
+          "nextState": "6"
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "name": "EnterTrackingNumber",
+      "type": "INPUT",
+      "message": "Entrez le numero de suivi:",
+      "storeAs": "trackingNumber",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 5,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "45"
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "name": "PricingMenu",
+      "type": "MENU",
+      "message": "Nos tarifs\n1. Free (0F)\n2. Standard (500F/mois)\n3. Pro (2000F/mois)\n4. Entreprise (5000F/mois)\n99. Retour",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "61"
+        },
+        {
+          "input": "2",
+          "nextState": "62"
+        },
+        {
+          "input": "3",
+          "nextState": "63"
+        },
+        {
+          "input": "4",
+          "nextState": "64"
+        },
+        {
+          "input": "99",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "6",
+      "name": "Help",
+      "type": "DISPLAY",
+      "message": "Aide et support\nTel: +237 XXX XXX XXX\nEmail: support@pickndrop.cm\n99. Retour",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "45",
+      "name": "TrackPackageAPI",
+      "type": "PROCESSING",
+      "message": "Recherche du colis...",
+      "action": {
+        "type": "API_CALL",
+        "method": "GET",
+        "endpoint": "/tracking/{{trackingNumber}}",
+        "onSuccess": {
+          "nextState": "72",
+          "responseMapping": {
+            "packageStatus": "status",
+            "currentLocation": "currentLocation"
+          }
+        },
+        "onError": {
+          "nextState": "73",
+          "message": "Colis introuvable"
+        }
+      }
+    },
+    {
+      "id": "48",
+      "name": "LoginEmail",
+      "type": "INPUT",
+      "message": "Entrez votre email:",
+      "storeAs": "loginEmail",
+      "validation": {
+        "type": "EMAIL"
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "49"
+        }
+      ]
+    },
+    {
+      "id": "49",
+      "name": "LoginPassword",
+      "type": "INPUT",
+      "message": "Entrez votre mot de passe:",
+      "storeAs": "loginPassword",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 6,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "74"
+        }
+      ]
+    },
+    {
+      "id": "50",
+      "name": "AuthenticatedMenu",
+      "type": "MENU",
+      "message": "Bienvenue {{userName}}\n1. Envoyer un colis\n2. Suivre un colis\n3. Mes colis\n4. Mon compte\n99. Deconnexion",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "9"
+        },
+        {
+          "input": "2",
+          "nextState": "3"
+        },
+        {
+          "input": "3",
+          "nextState": "80"
+        },
+        {
+          "input": "4",
+          "nextState": "51"
+        },
+        {
+          "input": "99",
+          "nextState": "89"
+        }
+      ]
+    },
+    {
+      "id": "51",
+      "name": "AccountInfo",
+      "type": "DISPLAY",
+      "message": "Informations de votre compte\nNom: {{userName}}\nEmail: {{userEmail}}\n99. Retour",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "50"
+        }
+      ]
+    },
+    {
+      "id": "52",
+      "name": "AccountTypeMenu",
+      "type": "MENU",
+      "message": "Type de compte\n1. Client\n2. Freelance\n3. Proprietaire agence\n4. Livreur\n99. Retour",
+      "storeAs": "accountType",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "53",
+          "value": "CLIENT"
+        },
+        {
+          "input": "2",
+          "nextState": "53",
+          "value": "FREELANCE"
+        },
+        {
+          "input": "3",
+          "nextState": "54",
+          "value": "AGENCY_OWNER"
+        },
+        {
+          "input": "4",
+          "nextState": "54",
+          "value": "DELIVERER"
+        },
+        {
+          "input": "99",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "53",
+      "name": "RegisterNameClient",
+      "type": "INPUT",
+      "message": "Entrez votre nom complet:",
+      "storeAs": "userName",
+      "validation": {
+        "type": "NAME",
+        "minLength": 3,
+        "maxLength": 100
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "55"
+        }
+      ]
+    },
+    {
+      "id": "54",
+      "name": "RegisterNameBusiness",
+      "type": "INPUT",
+      "message": "Entrez votre nom complet:",
+      "storeAs": "userName",
+      "validation": {
+        "type": "NAME",
+        "minLength": 3,
+        "maxLength": 100
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "56"
+        }
+      ]
+    },
+    {
+      "id": "55",
+      "name": "RegisterEmailClient",
+      "type": "INPUT",
+      "message": "Entrez votre email:",
+      "storeAs": "userEmail",
+      "validation": {
+        "type": "EMAIL"
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "57"
+        }
+      ]
+    },
+    {
+      "id": "56",
+      "name": "RegisterBusinessName",
+      "type": "INPUT",
+      "message": "Nom de l'entreprise:",
+      "storeAs": "businessName",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 3,
+        "maxLength": 100
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "58"
+        }
+      ]
+    },
+    {
+      "id": "57",
+      "name": "RegisterPasswordClient",
+      "type": "INPUT",
+      "message": "Creez votre mot de passe (min 6 caracteres):",
+      "storeAs": "userPassword",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 6,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "59"
+        }
+      ]
+    },
+    {
+      "id": "58",
+      "name": "RegisterEmailBusiness",
+      "type": "INPUT",
+      "message": "Entrez votre email:",
+      "storeAs": "userEmail",
+      "validation": {
+        "type": "EMAIL"
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "60"
+        }
+      ]
+    },
+    {
+      "id": "59",
+      "name": "RegisterCityClient",
+      "type": "INPUT",
+      "message": "Entrez votre ville:",
+      "storeAs": "userCity",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "65"
+        }
+      ]
+    },
+    {
+      "id": "60",
+      "name": "RegisterPasswordBusiness",
+      "type": "INPUT",
+      "message": "Creez votre mot de passe (min 6 caracteres):",
+      "storeAs": "userPassword",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 6,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "66"
+        }
+      ]
+    },
+    {
+      "id": "61",
+      "name": "FreePlan",
+      "type": "DISPLAY",
+      "message": "Plan FREE\n- 0 FCFA a vie\n- Suivi basique\n- Support email\n99. Retour",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "4"
+        }
+      ]
+    },
+    {
+      "id": "62",
+      "name": "StandardPlan",
+      "type": "DISPLAY",
+      "message": "Plan STANDARD\n- 500 FCFA/mois\n- Suivi temps reel\n- Support prioritaire\n99. Retour",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "4"
+        }
+      ]
+    },
+    {
+      "id": "63",
+      "name": "ProPlan",
+      "type": "DISPLAY",
+      "message": "Plan PRO\n- 2000 FCFA/mois\n- Suivi premium\n- Support 24/7\n99. Retour",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "4"
+        }
+      ]
+    },
+    {
+      "id": "64",
+      "name": "EnterprisePlan",
+      "type": "DISPLAY",
+      "message": "Plan ENTREPRISE\n- 5000 FCFA/mois\n- Solution personnalisee\n- API dediee\n99. Retour",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "4"
+        }
+      ]
+    },
+    {
+      "id": "65",
+      "name": "RegisterRegionClient",
+      "type": "INPUT",
+      "message": "Entrez votre region:",
+      "storeAs": "userRegion",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "67"
+        }
+      ]
+    },
+    {
+      "id": "66",
+      "name": "RegisterCityBusiness",
+      "type": "INPUT",
+      "message": "Entrez votre ville:",
+      "storeAs": "userCity",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "68"
+        }
+      ]
+    },
+    {
+      "id": "67",
+      "name": "RegisterCountryClient",
+      "type": "INPUT",
+      "message": "Entrez votre pays:",
+      "storeAs": "userCountry",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "69"
+        }
+      ]
+    },
+    {
+      "id": "68",
+      "name": "RegisterRegionBusiness",
+      "type": "INPUT",
+      "message": "Entrez votre region:",
+      "storeAs": "userRegion",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "70"
+        }
+      ]
+    },
+    {
+      "id": "69",
+      "name": "RegisterAddressClient",
+      "type": "INPUT",
+      "message": "Entrez votre adresse:",
+      "storeAs": "userAddress",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 5,
+        "maxLength": 200
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "75"
+        }
+      ]
+    },
+    {
+      "id": "70",
+      "name": "RegisterCountryBusiness",
+      "type": "INPUT",
+      "message": "Entrez votre pays:",
+      "storeAs": "userCountry",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "71"
+        }
+      ]
+    },
+    {
+      "id": "71",
+      "name": "RegisterAddressBusiness",
+      "type": "INPUT",
+      "message": "Entrez votre adresse:",
+      "storeAs": "userAddress",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 5,
+        "maxLength": 200
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "79"
+        }
+      ]
+    },
+    {
+      "id": "72",
+      "name": "DisplayPackageStatus",
+      "type": "DISPLAY",
+      "message": "Statut: {{packageStatus}}\nLocalisation: {{currentLocation}}\n\n99. Menu",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "73",
+      "name": "PackageNotFound",
+      "type": "DISPLAY",
+      "message": "Colis introuvable. Verifiez le numero.\n1. Reessayer\n99. Menu",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "3"
+        },
+        {
+          "input": "99",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "74",
+      "name": "ProcessLogin",
+      "type": "PROCESSING",
+      "message": "Connexion en cours...",
+      "action": {
+        "type": "API_CALL",
+        "method": "POST",
+        "endpoint": "/auth/login",
+        "body": {
+          "email": "{{loginEmail}}",
+          "password": "{{loginPassword}}"
+        },
+        "onSuccess": {
+          "nextState": "76",
+          "responseMapping": {
+            "authToken": "token",
+            "userId": "user.id",
+            "userName": "user.name",
+            "userEmail": "user.email"
+          }
+        },
+        "onError": {
+          "nextState": "77",
+          "message": "Identifiants incorrects"
+        }
+      }
+    },
+    {
+      "id": "75",
+      "name": "ProcessRegistrationClient",
+      "type": "PROCESSING",
+      "message": "Creation du compte...",
+      "action": {
+        "type": "API_CALL",
+        "method": "POST",
+        "endpoint": "/auth/register/client",
+        "body": {
+          "name": "{{userName}}",
+          "email": "{{userEmail}}",
+          "password": "{{userPassword}}",
+          "phoneNumber": "{{phoneNumber}}",
+          "city": "{{userCity}}",
+          "region": "{{userRegion}}",
+          "country": "{{userCountry}}",
+          "homeAddress": "{{userAddress}}",
+          "role": "CLIENT"
+        },
+        "onSuccess": {
+          "nextState": "76",
+          "responseMapping": {
+            "authToken": "token",
+            "userId": "user.id",
+            "userName": "user.name",
+            "userEmail": "user.email"
+          }
+        },
+        "onError": {
+          "nextState": "78",
+          "message": "Erreur creation compte"
+        }
+      }
+    },
+    {
+      "id": "76",
+      "name": "SaveAuthToken",
+      "type": "DISPLAY",
+      "message": "Connexion reussie!\n1. Continuer",
+      "postActions": [
+        {
+          "type": "STORAGE_SAVE",
+          "storageKey": "auth_token",
+          "value": "{{authToken}}"
+        },
+        {
+          "type": "STORAGE_SAVE",
+          "storageKey": "user_data",
+          "value": {
+            "userId": "{{userId}}",
+            "userName": "{{userName}}",
+            "userEmail": "{{userEmail}}"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "50"
+        }
+      ]
+    },
+    {
+      "id": "77",
+      "name": "LoginError",
+      "type": "DISPLAY",
+      "message": "Identifiants incorrects.\n1. Reessayer\n2. Creer un compte\n99. Menu",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "48"
+        },
+        {
+          "input": "2",
+          "nextState": "52"
+        },
+        {
+          "input": "99",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "78",
+      "name": "RegistrationError",
+      "type": "DISPLAY",
+      "message": "Erreur: {{apiErrorMessage}}\n1. Reessayer\n2. Se connecter\n99. Menu",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "52"
+        },
+        {
+          "input": "2",
+          "nextState": "48"
+        },
+        {
+          "input": "99",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "79",
+      "name": "ProcessRegistrationBusiness",
+      "type": "PROCESSING",
+      "message": "Creation du compte...",
+      "action": {
+        "type": "API_CALL",
+        "method": "POST",
+        "endpoint": "/auth/register/{{accountType == 'AGENCY_OWNER' ? 'agency-owner' : 'deliverer'}}",
+        "body": {
+          "name": "{{userName}}",
+          "email": "{{userEmail}}",
+          "password": "{{userPassword}}",
+          "phoneNumber": "{{phoneNumber}}",
+          "city": "{{userCity}}",
+          "region": "{{userRegion}}",
+          "country": "{{userCountry}}",
+          "homeAddress": "{{userAddress}}",
+          "businessName": "{{businessName}}",
+          "businessActorType": "{{accountType}}"
+        },
+        "onSuccess": {
+          "nextState": "76",
+          "responseMapping": {
+            "authToken": "token",
+            "userId": "user.id",
+            "userName": "user.name",
+            "userEmail": "user.email"
+          }
+        },
+        "onError": {
+          "nextState": "78",
+          "message": "Erreur creation compte"
+        }
+      }
+    },
+    {
+      "id": "80",
+      "name": "MyPackagesAPI",
+      "type": "PROCESSING",
+      "message": "Chargement de vos colis...",
+      "action": {
+        "type": "API_CALL",
+        "method": "GET",
+        "endpoint": "/packages/my-packages",
+        "onSuccess": {
+          "nextState": "81",
+          "responseMapping": {
+            "packagesList": "packages"
+          }
+        },
+        "onError": {
+          "nextState": "82",
+          "message": "Erreur chargement"
+        }
+      }
+    },
+    {
+      "id": "81",
+      "name": "DisplayMyPackages",
+      "type": "DISPLAY",
+      "message": "Vos colis:\n{{packagesList}}\n\n99. Retour",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "50"
+        }
+      ]
+    },
+    {
+      "id": "82",
+      "name": "MyPackagesError",
+      "type": "DISPLAY",
+      "message": "Impossible de charger vos colis.\n99. Retour",
+      "transitions": [
+        {
+          "input": "99",
+          "nextState": "50"
+        }
+      ]
+    },
+    {
+      "id": "89",
+      "name": "ProcessLogout",
+      "type": "DISPLAY",
+      "message": "Deconnexion...\n1. OK",
+      "postActions": [
+        {
+          "type": "STORAGE_DELETE",
+          "storageKey": "auth_token"
+        },
+        {
+          "type": "STORAGE_DELETE",
+          "storageKey": "user_data"
+        }
+      ],
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "2"
+        }
+      ]
+    },
+    {
+      "id": "9",
+      "name": "RecipientName",
+      "type": "INPUT",
+      "message": "Nom du destinataire:",
+      "storeAs": "recipientName",
+      "validation": {
+        "type": "NAME",
+        "minLength": 3,
+        "maxLength": 100
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "10"
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "name": "RecipientPhone",
+      "type": "INPUT",
+      "message": "Telephone du destinataire:",
+      "storeAs": "recipientPhone",
+      "validation": {
+        "type": "PHONE",
+        "minLength": 9,
+        "maxLength": 15
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "11"
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "name": "RecipientAddress",
+      "type": "INPUT",
+      "message": "Adresse du destinataire:",
+      "storeAs": "recipientAddress",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 5,
+        "maxLength": 200
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "12"
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "name": "PackageDescription",
+      "type": "INPUT",
+      "message": "Description du colis:",
+      "storeAs": "packageDescription",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 3,
+        "maxLength": 200
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "13"
+        }
+      ]
+    },
+    {
+      "id": "13",
+      "name": "PackageWeight",
+      "type": "INPUT",
+      "message": "Poids du colis (kg):",
+      "storeAs": "packageWeight",
+      "validation": {
+        "type": "NUMERIC",
+        "minLength": 1,
+        "maxLength": 5
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "14"
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "name": "PackageType",
+      "type": "MENU",
+      "message": "Type de colis\n1. Standard\n2. Fragile\n3. Perissable\n4. Urgent",
+      "storeAs": "packageType",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "15",
+          "value": "STANDARD"
+        },
+        {
+          "input": "2",
+          "nextState": "15",
+          "value": "FRAGILE"
+        },
+        {
+          "input": "3",
+          "nextState": "15",
+          "value": "PERISHABLE"
+        },
+        {
+          "input": "4",
+          "nextState": "15",
+          "value": "URGENT"
+        }
+      ]
+    },
+    {
+      "id": "15",
+      "name": "DeliveryOption",
+      "type": "MENU",
+      "message": "Option de livraison\n1. Point relais -> Client\n2. Client -> Point relais\n3. Client -> Client",
+      "storeAs": "deliveryOption",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "16",
+          "value": "RELAY_POINT_DELIVERY"
+        },
+        {
+          "input": "2",
+          "nextState": "17",
+          "value": "RELAY_POINT_PICKUP"
+        },
+        {
+          "input": "3",
+          "nextState": "18",
+          "value": "DIRECT_DELIVERY"
+        }
+      ]
+    },
+    {
+      "id": "16",
+      "name": "SelectArrivalRelay",
+      "type": "INPUT",
+      "message": "ID du point relais d'arrivee:",
+      "storeAs": "arrivalRelayPointId",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 10,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "19"
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "name": "SelectDepartureRelay",
+      "type": "INPUT",
+      "message": "ID du point relais de depart:",
+      "storeAs": "departureRelayPointId",
+      "validation": {
+        "type": "TEXT",
+        "minLength": 10,
+        "maxLength": 50
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "19"
+        }
+      ]
+    },
+    {
+      "id": "18",
+      "name": "DirectDeliveryConfirm",
+      "type": "DISPLAY",
+      "message": "Livraison directe selectionnee.\n1. Continuer",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "19"
+        }
+      ]
+    },
+    {
+      "id": "19",
+      "name": "DeliveryFee",
+      "type": "INPUT",
+      "message": "Frais de livraison (FCFA):",
+      "storeAs": "deliveryFee",
+      "validation": {
+        "type": "NUMERIC",
+        "minLength": 3,
+        "maxLength": 10
+      },
+      "transitions": [
+        {
+          "condition": "VALID",
+          "nextState": "20"
+        }
+      ]
+    },
+    {
+      "id": "20",
+      "name": "ConfirmPackageCreation",
+      "type": "MENU",
+      "message": "Confirmer l'envoi?\nDestinataire: {{recipientName}}\nPoids: {{packageWeight}}kg\nFrais: {{deliveryFee}} FCFA\n\n1. Confirmer\n99. Annuler",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "21"
+        },
+        {
+          "input": "99",
+          "nextState": "50"
+        }
+      ]
+    },
+    {
+      "id": "21",
+      "name": "CreatePackageAPI",
+      "type": "PROCESSING",
+      "message": "Creation du colis...",
+      "action": {
+        "type": "API_CALL",
+        "method": "POST",
+        "endpoint": "/relay-to-client",
+        "body": {
+          "recipientName": "{{recipientName}}",
+          "recipientPhone": "{{recipientPhone}}",
+          "recipientAddress": "{{recipientAddress}}",
+          "senderName": "{{userName}}",
+          "senderPhone": "{{phoneNumber}}",
+          "packageDescription": "{{packageDescription}}",
+          "weight": "{{packageWeight}}",
+          "deliveryFee": "{{deliveryFee}}",
+          "packageType": "{{packageType}}",
+          "deliveryOption": "{{deliveryOption}}"
+        },
+        "onSuccess": {
+          "nextState": "22",
+          "responseMapping": {
+            "trackingNumber": "trackingNumber",
+            "packageId": "id"
+          }
+        },
+        "onError": {
+          "nextState": "23",
+          "message": "Erreur creation"
+        }
+      }
+    },
+    {
+      "id": "22",
+      "name": "PackageCreatedSuccess",
+      "type": "DISPLAY",
+      "message": "Colis cree avec succes!\nNumero de suivi: {{trackingNumber}}\n\n1. Suivre ce colis\n99. Menu",
+      "postActions": [
+        {
+          "type": "STORAGE_APPEND",
+          "storageKey": "my_packages",
+          "value": {
+            "trackingNumber": "{{trackingNumber}}",
+            "recipientName": "{{recipientName}}"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "45"
+        },
+        {
+          "input": "99",
+          "nextState": "50"
+        }
+      ]
+    },
+    {
+      "id": "23",
+      "name": "PackageCreationError",
+      "type": "DISPLAY",
+      "message": "Erreur lors de la creation.\n1. Reessayer\n99. Menu",
+      "transitions": [
+        {
+          "input": "1",
+          "nextState": "9"
+        },
+        {
+          "input": "99",
+          "nextState": "50"
+        }
+      ]
+    }
+  ]
+}

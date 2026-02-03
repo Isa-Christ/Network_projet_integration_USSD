@@ -18,13 +18,17 @@ public class Action {
     private String endpoint;
     private Map<String, String> headers;
     private Map<String, Object> body;
-    
+
     /**
      * Mapping pour la requête (utilisé dans ApiInvoker ligne 214-215)
      * Permet de mapper les variables du contexte vers les paramètres de la requête
      */
     private Map<String, String> requestMapping;
-    
+
     private ActionResult onSuccess;
     private ActionResult onError;
+    private String storageKey; // Clé de stockage
+    private String storeAs; // Variable où stocker le résultat
+    private String operation; // "SAVE", "APPEND", "DELETE"
+    private Object value; // Valeur à stocker (peut contenir des templates)
 }

@@ -1,6 +1,7 @@
 package com.network.projet.ussd.controller;
 
 import org.springframework.beans.factory.annotation.Value;
+import com.network.projet.ussd.domain.model.UssdService;
 import com.network.projet.ussd.dto.request.UssdRequest;
 import com.network.projet.ussd.dto.response.UssdResponse;
 import com.network.projet.ussd.exception.ServiceNotFoundException;
@@ -85,20 +86,16 @@ public class UssdController {
         return serviceRegistry.getAllActiveServices()
                 .collectList()
                 .map(services -> {
+                    StringBuilder menu = new StringBuilder("Bienvenue sur USSD Gateway\n");
+
                     if (services.isEmpty()) {
-                        return UssdResponse.builder()
-                                .message("Aucun service disponible.")
-                                .continueSession(false)
-                                .build();
+                        menu.append("Aucun service disponible.");
+                    } else {
+                        for (int i = 0; i < services.size(); i++) {
+                            menu.append(i + 1).append(". ").append(services.get(i).getName()).append("\n");
+                        }
+                        menu.append("0. Quitter");
                     }
-
-                    StringBuilder menu = new StringBuilder("🏠 MENU PRINCIPAL\n\n");
-                    for (int i = 0; i < services.size(); i++) {
-                        menu.append(String.format("%d. %s\n", i + 1, services.get(i).getName()));
-                    }
-                    menu.append("\n0. Quitter");
-
-                    log.info("Main menu displayed with {} services", services.size());
 
                     return UssdResponse.builder()
                             .message(menu.toString())
@@ -147,9 +144,12 @@ public class UssdController {
                                 .build());
                     }
 
-                    String targetUssdCode = SERVICE_CODE_PREFIX + serviceNumber + SERVICE_CODE_SUFFIX;
+                    // Récupérer le service correspondant dans la liste
+                    UssdService targetService = services.get(serviceNumber - 1);
+                    String targetUssdCode = targetService.getShortCode();
 
-                    log.info("Menu selection {} → USSD code {}", serviceNumber, targetUssdCode);
+                    log.info("Menu selection {} → Service: {} ({})",
+                            serviceNumber, targetService.getName(), targetUssdCode);
 
                     UssdRequest serviceRequest = UssdRequest.builder()
                             .sessionId(request.getSessionId())
@@ -200,15 +200,11 @@ public class UssdController {
     private Mono<UssdResponse> handleError(Throwable error) {
         log.error("USSD Error: {}", error.getMessage(), error);
 
-        String message = "Erreur technique: " + error.getMessage();
-
-        if (error instanceof ServiceNotFoundException) {
-            message = "Service indisponible. Code USSD non reconnu.";
-        } else if (error instanceof IllegalArgumentException) {
-            message = "Configuration invalide: " + error.getMessage();
-        } else if (error.getMessage().contains("No initial state")) {
-            message = "Erreur: Ce service n'a pas d'état initial (isInitial: true).";
-        }
+        String message = switch (error) {
+            case ServiceNotFoundException e -> "Service indisponible. Contactez le support.";
+            case IllegalArgumentException e -> "Requête invalide: " + e.getMessage();
+            default -> "Erreur technique. Réessayez plus tard.";
+        };
 
         return Mono.just(UssdResponse.builder()
                 .message(message)

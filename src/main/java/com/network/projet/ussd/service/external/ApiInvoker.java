@@ -6,17 +6,24 @@ import com.network.projet.ussd.domain.model.automaton.Action;
 import com.network.projet.ussd.domain.model.automaton.ApiConfig;
 import com.network.projet.ussd.dto.ExternalApiResponse;
 import com.network.projet.ussd.util.TemplateEngine;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.network.projet.ussd.exception.ApiCallException;
 
 /**
  * ApiInvoker - Service d'invocation des API externes
@@ -42,7 +49,8 @@ public class ApiInvoker {
     private final WebClient.Builder webClientBuilder;
     private final TemplateEngine templateEngine;
     private final AuthenticationHandler authenticationHandler;
-    
+    private final ObjectMapper objectMapper;
+
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
 
     // ========== MÉTHODES PRINCIPALES ==========
@@ -50,60 +58,60 @@ public class ApiInvoker {
     /**
      * Invoque une API externe basée sur la configuration de l'action
      * 
-     * @param apiConfig Configuration API (baseUrl, timeout, auth, etc.)
-     * @param action Action à exécuter (endpoint, method, body, headers)
+     * @param apiConfig   Configuration API (baseUrl, timeout, auth, etc.)
+     * @param action      Action à exécuter (endpoint, method, body, headers)
      * @param sessionData Données de session pour le template rendering
      * @return Mono<ExternalApiResponse> Réponse de l'API externe
      */
     public Mono<ExternalApiResponse> invoke(
-            ApiConfig apiConfig, 
-            Action action, 
+            ApiConfig apiConfig,
+            Action action,
             Map<String, Object> sessionData) {
-        
-        log.info("Invoking external API: method={}, endpoint={}", 
-            action.getMethod(), action.getEndpoint());
+
+        log.info("Invoking external API: method={}, endpoint={}",
+                action.getMethod(), action.getEndpoint());
 
         // Validation des paramètres
         if (apiConfig == null || action == null || action.getEndpoint() == null) {
             log.error("Invalid API configuration or action");
             return Mono.just(ExternalApiResponse.builder()
-                .status(ApiResponseStatus.CLIENT_ERROR)
-                .errorMessage("Invalid API configuration or action")
-                .build());
+                    .status(ApiResponseStatus.CLIENT_ERROR)
+                    .errorMessage("Invalid API configuration or action")
+                    .build());
         }
 
         try {
             // Construction de la requête
-            String url = buildUrl(apiConfig.getBaseUrl(), action.getEndpoint(), sessionData);
+            String url = buildUrl(apiConfig.getBaseUrl(), action.getEndpoint(), sessionData, apiConfig);
             Map<String, String> headers = buildHeaders(apiConfig, action, sessionData);
             Object requestBody = buildRequestBody(action, sessionData);
             HttpMethod method = action.getMethod() != null ? action.getMethod() : HttpMethod.POST;
-            Duration timeout = apiConfig.getTimeout() != null 
-                ? Duration.ofSeconds(apiConfig.getTimeout()) 
-                : DEFAULT_TIMEOUT;
+            Duration timeout = apiConfig.getTimeout() != null
+                    ? Duration.ofSeconds(apiConfig.getTimeout())
+                    : DEFAULT_TIMEOUT;
 
             log.debug("Built request: url={}, method={}, timeout={}s", url, method, timeout.getSeconds());
 
             // Exécution de la requête
             return executeRequest(url, method, requestBody, headers, timeout)
-                .doOnSuccess(response -> log.info("API call successful: status={}", response.getStatus()))
-                .doOnError(error -> log.error("API call failed: {}", error.getMessage()));
+                    .doOnSuccess(response -> log.info("API call successful: status={}", response.getStatus()))
+                    .doOnError(error -> log.error("API call failed: {}", error.getMessage()));
 
         } catch (Exception e) {
             log.error("Error preparing API request", e);
             return Mono.just(ExternalApiResponse.builder()
-                .status(ApiResponseStatus.CLIENT_ERROR)
-                .errorMessage("Error preparing request: " + e.getMessage())
-                .build());
+                    .status(ApiResponseStatus.CLIENT_ERROR)
+                    .errorMessage("Error preparing request: " + e.getMessage())
+                    .build());
         }
     }
 
     /**
      * Construit et exécute une requête HTTP
      * 
-     * @param url URL complète de la requête
-     * @param method Méthode HTTP
-     * @param body Corps de la requête (optionnel)
+     * @param url     URL complète de la requête
+     * @param method  Méthode HTTP
+     * @param body    Corps de la requête (optionnel)
      * @param headers En-têtes HTTP (optionnel)
      * @param timeout Timeout de la requête
      * @return Mono<ExternalApiResponse> Réponse de l'API
@@ -114,16 +122,19 @@ public class ApiInvoker {
             Object body,
             Map<String, String> headers,
             Duration timeout) {
-        
+
         log.debug("Executing {} request to {}", method, url);
 
         WebClient client = webClientBuilder.build();
-        WebClient.RequestBodySpec requestSpec = client.method(convertToSpringHttpMethod(method))
-            .uri(url);
+
+        // Construction de la requête
+        WebClient.RequestBodySpec requestSpec = client
+                .method(convertToSpringHttpMethod(method))
+                .uri(url);
 
         // Ajouter les headers
         if (headers != null && !headers.isEmpty()) {
-            requestSpec.headers(httpHeaders -> headers.forEach(httpHeaders::add));
+            requestSpec.headers(h -> headers.forEach(h::add));
         }
 
         // Ajouter le body si présent
@@ -131,72 +142,116 @@ public class ApiInvoker {
             requestSpec.bodyValue(body);
         }
 
-        // Exécuter la requête avec timeout
-        return requestSpec.retrieve()
-            .toEntity(String.class)
-            .timeout(timeout)
-            .map(responseEntity -> ExternalApiResponse.builder()
-                .status(ApiResponseStatus.SUCCESS)
-                .statusCode(responseEntity.getStatusCode().value())
-                .body(responseEntity.getBody())
-                .headers(responseEntity.getHeaders().toSingleValueMap())
-                .build())
-            .onErrorResume(error -> handleException(error, url, method));
+        // Exécuter avec gestion des erreurs
+        return requestSpec
+                .retrieve()
+                .onStatus(
+    status -> status.is4xxClientError(),
+    response -> {
+        log.error("Error calling external API [{} {}]: {}", method, url, response.statusCode());
+        return response.bodyToMono(String.class)
+            .flatMap(errorBody -> {
+                log.error("Error response body: {}", errorBody);
+                // Créer une exception personnalisée avec le body
+                return Mono.error(new ApiCallException(
+                    response.statusCode().value(),
+                    errorBody,
+                    url
+                ));
+            });
+    })
+                .onStatus(
+                        status -> status.is5xxServerError(),
+                        response -> {
+                            log.error("Server error calling external API [{} {}]: {}",
+                                    method, url, response.statusCode());
+                            return Mono.error(new RuntimeException(
+                                    response.statusCode().value() + " from " + method + " " + url));
+                        })
+                .bodyToMono(String.class)
+                .timeout(timeout)
+                .map(responseBody -> {
+                    Object data = null;
+                    try {
+                        data = objectMapper.readValue(responseBody, Object.class);
+                    } catch (Exception e) {
+                        log.warn("Failed to parse response as JSON", e);
+                    }
+
+                    return ExternalApiResponse.builder()
+                            .status(ApiResponseStatus.SUCCESS)
+                            .statusCode(200)
+                            .body(responseBody)
+                            .data(data)
+                            .build();
+                })
+                .onErrorResume(error -> handleException(error, url, method));
     }
 
     // ========== CONSTRUCTION DE LA REQUÊTE ==========
 
     /**
-     * Construit l'URL complète en combinant baseUrl et endpoint avec template rendering
+     * Construit l'URL complète en combinant baseUrl et endpoint avec template
+     * rendering
      */
-    private String buildUrl(String baseUrl, String endpoint, Map<String, Object> sessionData) {
+    private String buildUrl(String baseUrl, String endpoint, Map<String, Object> sessionData, ApiConfig apiConfig) {
         // Rendre les templates dans l'endpoint
         String renderedEndpoint = templateEngine.render(endpoint, sessionData);
-        
+
         if (baseUrl == null || baseUrl.isEmpty()) {
             return renderedEndpoint;
         }
-        
+
         // Normaliser les slashes
         String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         String normalizedEndpoint = renderedEndpoint.startsWith("/") ? renderedEndpoint : "/" + renderedEndpoint;
-        
-        return normalizedBase + normalizedEndpoint;
+
+        String fullUrl = normalizedBase + normalizedEndpoint;
+
+        // Ajouter les query params d'authentification si API_KEY avec paramName
+        if (apiConfig.getAuthentication() != null) {
+            Map<String, String> queryParams = authenticationHandler.extractQueryParams(apiConfig.getAuthentication());
+            if (queryParams != null && !queryParams.isEmpty()) {
+                String separator = fullUrl.contains("?") ? "&" : "?";
+                for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+                    fullUrl += separator + entry.getKey() + "=" + entry.getValue();
+                    separator = "&";
+                }
+            }
+        }
+
+        return fullUrl;
     }
 
     /**
-     * Construit les headers en fusionnant config API + action + auth + template rendering
+     * Construit les headers en fusionnant config API + action + auth + template
+     * rendering
      */
     private Map<String, String> buildHeaders(
-            ApiConfig apiConfig, 
-            Action action, 
+            ApiConfig apiConfig,
+            Action action,
             Map<String, Object> sessionData) {
-        
+
         Map<String, String> headers = new HashMap<>();
-        
+
         // 1. Headers de la config API (si présents)
         if (apiConfig.getHeaders() != null) {
-            apiConfig.getHeaders().forEach((key, value) -> 
-                headers.put(key, templateEngine.render(value, sessionData))
-            );
+            apiConfig.getHeaders().forEach((key, value) -> headers.put(key, templateEngine.render(value, sessionData)));
         }
-        
+
         // 2. Headers de l'action (priorité plus haute)
         if (action.getHeaders() != null) {
-            action.getHeaders().forEach((key, value) -> 
-                headers.put(key, templateEngine.render(value, sessionData))
-            );
+            action.getHeaders().forEach((key, value) -> headers.put(key, templateEngine.render(value, sessionData)));
         }
-        
+
         // 3. Headers d'authentification (priorité maximale)
         if (apiConfig.getAuthentication() != null) {
             Map<String, String> authHeaders = authenticationHandler.buildAuthHeaders(
-                apiConfig.getAuthentication(), 
-                sessionData
-            );
+                    apiConfig.getAuthentication(),
+                    sessionData);
             headers.putAll(authHeaders);
         }
-        
+
         log.debug("Built headers: {}", headers.keySet());
         return headers.isEmpty() ? null : headers;
     }
@@ -207,15 +262,34 @@ public class ApiInvoker {
     private Object buildRequestBody(Action action, Map<String, Object> sessionData) {
         // 1. Si body explicite dans l'action
         if (action.getBody() != null) {
-            return renderBodyTemplate(action.getBody(), sessionData);
+            Object resolvedBody = renderBodyTemplate(action.getBody(), sessionData);
+
+            // ✅ AJOUTE CES LOGS ICI
+            try {
+                log.info(">>> REQUEST BODY (resolved): {}", objectMapper.writeValueAsString(resolvedBody));
+            } catch (Exception e) {
+                log.warn("Could not serialize body for logging", e);
+            }
+
+            return resolvedBody;
         }
-        
+
         // 2. Si requestMapping défini, mapper les données
         if (action.getRequestMapping() != null && !action.getRequestMapping().isEmpty()) {
-            return buildMappedBody(action.getRequestMapping(), sessionData);
+            Map<String, Object> mappedBody = buildMappedBody(action.getRequestMapping(), sessionData);
+
+            // ✅ AJOUTE CES LOGS ICI AUSSI
+            try {
+                log.info(">>> REQUEST BODY (mapped): {}", objectMapper.writeValueAsString(mappedBody));
+            } catch (Exception e) {
+                log.warn("Could not serialize body for logging", e);
+            }
+
+            return mappedBody;
         }
-        
+
         // 3. Par défaut, utiliser toutes les données de session
+        log.info(">>> REQUEST BODY (sessionData): {}", sessionData.keySet());
         return sessionData;
     }
 
@@ -223,15 +297,21 @@ public class ApiInvoker {
      * Rend les templates dans le body (récursif pour Map et String)
      */
     private Object renderBodyTemplate(Object body, Map<String, Object> sessionData) {
+        log.debug(">>> Rendering body template with sessionData keys: {}", sessionData.keySet());
+
         if (body instanceof String) {
             return templateEngine.render((String) body, sessionData);
         } else if (body instanceof Map) {
             Map<String, Object> renderedMap = new HashMap<>();
             ((Map<?, ?>) body).forEach((key, value) -> {
                 String renderedKey = key.toString();
-                Object renderedValue = value instanceof String 
-                    ? templateEngine.render((String) value, sessionData)
-                    : value;
+                Object renderedValue = value instanceof String
+                        ? templateEngine.render((String) value, sessionData)
+                        : value;
+
+                // ✅ LOG CHAQUE CHAMP
+                log.debug(">>> Body field: {} = {} (rendered: {})", renderedKey, value, renderedValue);
+
                 renderedMap.put(renderedKey, renderedValue);
             });
             return renderedMap;
@@ -243,11 +323,11 @@ public class ApiInvoker {
      * Construit le body en mappant les données selon requestMapping
      */
     private Map<String, Object> buildMappedBody(
-            Map<String, String> requestMapping, 
+            Map<String, String> requestMapping,
             Map<String, Object> sessionData) {
-        
+
         Map<String, Object> mappedBody = new HashMap<>();
-        
+
         requestMapping.forEach((targetKey, sourceKey) -> {
             // Extraire la valeur avec support des nested paths (ex: "user.name")
             Object value = extractNestedValue(sessionData, sourceKey);
@@ -257,7 +337,7 @@ public class ApiInvoker {
                 log.warn("Request mapping: source key '{}' not found in session data", sourceKey);
             }
         });
-        
+
         log.debug("Mapped request body: {} → {} fields", requestMapping.size(), mappedBody.size());
         return mappedBody;
     }
@@ -270,28 +350,9 @@ public class ApiInvoker {
     private Mono<ExternalApiResponse> handleException(Throwable error, String url, HttpMethod method) {
         log.error("Error calling external API [{} {}]: {}", method, url, error.getMessage());
 
-        ExternalApiResponse.ExternalApiResponseBuilder responseBuilder = ExternalApiResponse.builder()
-            .errorMessage(error.getMessage());
-
-        // Erreur WebClient (4xx, 5xx)
-        if (error instanceof WebClientResponseException webClientException) {
-            responseBuilder
-                .status(webClientException.getStatusCode().is5xxServerError()
-                    ? ApiResponseStatus.SERVER_ERROR
-                    : ApiResponseStatus.CLIENT_ERROR)
-                .statusCode(webClientException.getStatusCode().value())
-                .body(webClientException.getResponseBodyAsString());
-        } 
-        // Timeout
-        else if (error instanceof TimeoutException || error instanceof java.net.SocketTimeoutException) {
-            responseBuilder.status(ApiResponseStatus.TIMEOUT);
-        } 
-        // Erreur réseau
-        else {
-            responseBuilder.status(ApiResponseStatus.NETWORK_ERROR);
-        }
-
-        return Mono.just(responseBuilder.build());
+        // Simplement propager l'erreur pour que AutomatonEngine aille dans
+        // onErrorResume()
+        return Mono.error(error);
     }
 
     // ========== MÉTHODES UTILITAIRES ==========
@@ -313,9 +374,9 @@ public class ApiInvoker {
      * Vérifie si la méthode HTTP requiert un body
      */
     private boolean requiresBody(HttpMethod method) {
-        return method == HttpMethod.POST 
-            || method == HttpMethod.PUT 
-            || method == HttpMethod.PATCH;
+        return method == HttpMethod.POST
+                || method == HttpMethod.PUT
+                || method == HttpMethod.PATCH;
     }
 
     /**

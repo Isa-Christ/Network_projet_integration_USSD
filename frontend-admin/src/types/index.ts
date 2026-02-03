@@ -6,6 +6,7 @@ export interface ServiceInfoResponse {
     name: string;
     shortCode: string;
     apiBaseUrl: string;
+    jsonConfig?: string;
     isActive: boolean;
     createdAt: string;
 }

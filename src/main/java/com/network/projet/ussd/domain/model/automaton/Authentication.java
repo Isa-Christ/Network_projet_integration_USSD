@@ -4,7 +4,6 @@ import com.network.projet.ussd.domain.enums.AuthenticationType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.util.Map;
 
 @Data
@@ -12,6 +11,5 @@ import java.util.Map;
 @AllArgsConstructor
 public class Authentication {
     private AuthenticationType type;
-    private String credentials;
-    // private Map<String, String> credentials;
+    private Map<String, String> credentials;
 }

@@ -15,7 +15,6 @@ public class AuthenticationHandler {
     
     /**
      * Construit les headers d'authentification à partir de l'objet Authentication
-     * Utilisé par ApiInvoker ligne 193
      * 
      * @param authentication Configuration d'authentification
      * @param context Variables de contexte pour résoudre les placeholders
@@ -31,131 +30,98 @@ public class AuthenticationHandler {
             return authHeaders;
         }
         
-        // Résoudre les credentials avec le contexte si nécessaire
-        String resolvedCredentials = resolveCredentials(authentication.getCredentials(), context);
+        Map<String, String> credentials = authentication.getCredentials();
+        if (credentials == null || credentials.isEmpty()) {
+            return authHeaders;
+        }
         
         return switch (authentication.getType()) {
             case NONE -> authHeaders;
-            case BASIC -> buildBasicAuthHeaders(resolvedCredentials);
-            case BEARER -> buildBearerAuthHeaders(resolvedCredentials);
-            case API_KEY -> buildApiKeyAuthHeaders(resolvedCredentials);
-        };
-    }
-    
-    /**
-     * Applique l'authentification au WebClient selon le type spécifié
-     */
-    public WebClient.RequestHeadersSpec<?> applyAuthentication(
-            WebClient.RequestHeadersSpec<?> request,
-            AuthenticationType authenticationType,
-            String credentials) {
-        
-        return switch (authenticationType) {
-            case NONE -> request;
-            case BASIC -> applyBasicAuth(request, credentials);
-            case BEARER -> applyBearerAuth(request, credentials);
-            case API_KEY -> applyApiKeyAuth(request, credentials);
+            case BASIC -> buildBasicAuthHeaders(credentials);
+            case BEARER -> buildBearerAuthHeaders(credentials);
+            case API_KEY -> buildApiKeyAuthHeaders(credentials);
         };
     }
     
     /**
      * Construit les headers pour authentification BASIC
+     * Format credentials: {"username": "user", "password": "pass"}
      */
-    private Map<String, String> buildBasicAuthHeaders(String credentials) {
+    private Map<String, String> buildBasicAuthHeaders(Map<String, String> credentials) {
         Map<String, String> headers = new HashMap<>();
-        String encodedCredentials = Base64.getEncoder()
-                .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-        headers.put("Authorization", "Basic " + encodedCredentials);
+        
+        String username = credentials.get("username");
+        String password = credentials.get("password");
+        
+        if (username != null && password != null) {
+            String combined = username + ":" + password;
+            String encodedCredentials = Base64.getEncoder()
+                    .encodeToString(combined.getBytes(StandardCharsets.UTF_8));
+            headers.put("Authorization", "Basic " + encodedCredentials);
+        }
+        
         return headers;
     }
     
     /**
      * Construit les headers pour authentification BEARER
+     * Format credentials: {"token": "your-jwt-token"}
      */
-    private Map<String, String> buildBearerAuthHeaders(String credentials) {
+    private Map<String, String> buildBearerAuthHeaders(Map<String, String> credentials) {
         Map<String, String> headers = new HashMap<>();
-        headers.put("Authorization", "Bearer " + credentials);
+        
+        String token = credentials.get("token");
+        if (token != null) {
+            headers.put("Authorization", "Bearer " + token);
+        }
+        
         return headers;
     }
     
     /**
      * Construit les headers pour authentification API_KEY
+     * Format credentials: {"paramName": "appid", "apiKey": "abc123"}
+     * ou {"headerName": "X-API-Key", "apiKey": "abc123"}
      */
-    private Map<String, String> buildApiKeyAuthHeaders(String credentials) {
+    private Map<String, String> buildApiKeyAuthHeaders(Map<String, String> credentials) {
         Map<String, String> headers = new HashMap<>();
-        String headerName = "X-API-Key";
-        String apiKeyValue = credentials;
         
-        // Si format "headerName:apiKeyValue"
-        if (credentials.contains(":")) {
-            String[] parts = credentials.split(":", 2);
-            headerName = parts[0];
-            apiKeyValue = parts[1];
+        String headerName = credentials.get("headerName");
+        String apiKey = credentials.get("apiKey");
+        
+        // Si headerName est défini, utiliser celui-là, sinon défaut "X-API-Key"
+        if (apiKey != null && headerName != null) {
+            headers.put(headerName, apiKey);
         }
         
-        headers.put(headerName, apiKeyValue);
+        // Note: Si c'est un query param (paramName), c'est géré par extractQueryParams()
+        
         return headers;
     }
     
     /**
-     * Authentification BASIC (username:password encodé en Base64)
-     * Format credentials: "username:password"
+     * Extrait les query params pour l'authentification API_KEY
+     * Utilisé quand l'API key doit être dans l'URL (ex: ?appid=abc123)
      */
-    private WebClient.RequestHeadersSpec<?> applyBasicAuth(
-            WebClient.RequestHeadersSpec<?> request, String credentials) {
-        String encodedCredentials = Base64.getEncoder()
-                .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-        return request.header("Authorization", "Basic " + encodedCredentials);
-    }
-    
-    /**
-     * Authentification BEARER (token JWT ou OAuth)
-     * Format credentials: "your-token-here"
-     */
-    private WebClient.RequestHeadersSpec<?> applyBearerAuth(
-            WebClient.RequestHeadersSpec<?> request, String credentials) {
-        return request.header("Authorization", "Bearer " + credentials);
-    }
-    
-    /**
-     * Authentification API_KEY
-     * Format credentials: "headerName:apiKeyValue" ou juste "apiKeyValue" (défaut: X-API-Key)
-     */
-    private WebClient.RequestHeadersSpec<?> applyApiKeyAuth(
-            WebClient.RequestHeadersSpec<?> request, String credentials) {
-        String headerName = "X-API-Key";
-        String apiKeyValue = credentials;
-        
-        // Si format "headerName:apiKeyValue"
-        if (credentials.contains(":")) {
-            String[] parts = credentials.split(":", 2);
-            headerName = parts[0];
-            apiKeyValue = parts[1];
+    public Map<String, String> extractQueryParams(Authentication authentication) {
+        if (authentication == null || authentication.getType() != AuthenticationType.API_KEY) {
+            return null;
         }
         
-        return request.header(headerName, apiKeyValue);
-    }
-    
-    /**
-     * Résout les placeholders dans les credentials
-     * Exemple: "{{context.apiKey}}" -> valeur réelle depuis le contexte
-     */
-    private String resolveCredentials(String credentials, Map<String, Object> context) {
-        if (credentials == null || !credentials.contains("{{")) {
-            return credentials;
+        Map<String, String> credentials = authentication.getCredentials();
+        if (credentials == null) {
+            return null;
         }
         
-        String resolved = credentials;
+        String paramName = credentials.get("paramName");
+        String apiKey = credentials.get("apiKey");
         
-        // Remplacer les placeholders {{key}}
-        for (Map.Entry<String, Object> entry : context.entrySet()) {
-            String placeholder = "{{" + entry.getKey() + "}}";
-            if (resolved.contains(placeholder)) {
-                resolved = resolved.replace(placeholder, 
-                        entry.getValue() != null ? entry.getValue().toString() : "");
-            }
+        if (paramName != null && apiKey != null) {
+            Map<String, String> queryParams = new HashMap<>();
+            queryParams.put(paramName, apiKey);
+            return queryParams;
         }
         
-        return resolved;
+        return null;
     }
 }

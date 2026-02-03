@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiHome, FiPlusCircle, FiList, FiLogOut } from 'react-icons/fi';
+import { FiHome, FiPlusCircle, FiList, FiLogOut, FiCpu } from 'react-icons/fi';
 import { useAuth } from '@/context/AuthContext';
 
 const menuItems = [
@@ -20,6 +20,11 @@ const menuItems = [
         name: 'Liste des services',
         href: '/dashboard/services/list',
         icon: FiList,
+    },
+    {
+        name: 'Générateur IA',
+        href: '/dashboard/ai-generator',
+        icon: FiCpu,
     },
 ];
 

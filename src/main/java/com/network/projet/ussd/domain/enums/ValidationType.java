@@ -7,5 +7,5 @@ public enum ValidationType {
     DECIMAL,
     TEXT,
     NUMERIC,
-    ALPHANUMERIC
+    ALPHANUMERIC, CUSTOM
 }

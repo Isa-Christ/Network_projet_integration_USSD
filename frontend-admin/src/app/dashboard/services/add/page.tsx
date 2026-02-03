@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createService } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -14,6 +14,41 @@ export default function AddServicePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isValid, setIsValid] = useState(true);
     const router = useRouter();
+    // Use window.location because useSearchParams might cause static build issues if not wrapped in Suspense
+    // But for client component it's usually fine. Let's stick to standard useEffect with window.
+
+    // Check for generated config on mount
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && !isInitialized) {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('mode') === 'generated') {
+                const storedConfig = localStorage.getItem('generated_ussd_config');
+                if (storedConfig) {
+                    try {
+                        const parsed = JSON.parse(storedConfig);
+                        setJsonConfig(JSON.stringify(parsed, null, 2));
+                        if (parsed.serviceName) setServiceName(parsed.serviceName);
+                        if (parsed.serviceCode) setServiceCode(parsed.serviceCode);
+
+                        toast.success('Configuration générée par IA chargée !', {
+                            icon: '🤖',
+                            duration: 4000
+                        });
+
+                        // Optional: Clear it so it doesn't reload if user refreshes without the param? 
+                        // Or keep it for safety. Let's keep it but maybe we don't need to clear it immedaitely.
+                        // localStorage.removeItem('generated_ussd_config'); 
+                    } catch (e) {
+                        console.error("Failed to parse generated config", e);
+                        toast.error("Erreur lors du chargement de la config générée");
+                    }
+                }
+            }
+            setIsInitialized(true);
+        }
+    }, [isInitialized]);
 
     const handleJsonChange = (value: string) => {
         setJsonConfig(value);
@@ -62,11 +97,11 @@ export default function AddServicePage() {
 
         try {
             await createService({ jsonConfig });
-            toast.success('Service ajouté avec succès !');
+            toast.success('Service ajouté avec succès !', { id: 'add-service-success' });
             router.push('/dashboard/services/list');
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || 'Erreur lors de l\'ajout du service';
-            toast.error(errorMessage);
+            const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de l\'ajout du service';
+            toast.error(errorMessage, { id: 'add-service-error' });
         } finally {
             setIsLoading(false);
         }

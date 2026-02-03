@@ -41,22 +41,20 @@ public class ServiceAdminController {
 	public Mono<ServiceInfoResponse> registerService(@RequestBody ServiceRegistrationRequest request) {
 		log.info("Registering new service from JSON config");
 
-		return Mono.fromCallable(() -> {
-			// Parse and validate JSON
-			AutomatonDefinition automaton = objectMapper.readValue(
-					request.getJsonConfig(),
-					AutomatonDefinition.class);
-			return automaton;
-		})
-				.flatMap(automaton ->
-				// Generate short code reactively
-				shortCodeGenerator.generateNext()
+		return Mono.fromCallable(() -> objectMapper.readValue(request.getJsonConfig(), AutomatonDefinition.class))
+				.flatMap(automaton -> serviceRepository.findByCode(automaton.getServiceCode())
+						.flatMap(existing -> Mono.<AutomatonDefinition>error(
+								new com.network.projet.ussd.exception.ServiceAlreadyExistsException(
+										"Le service avec le code '" + automaton.getServiceCode() + "' existe déjà.")))
+						.switchIfEmpty(Mono.just(automaton)))
+				.flatMap(automaton -> shortCodeGenerator.generateNext()
 						.map(generatedShortCode -> UssdService.builder()
 								.code(automaton.getServiceCode())
 								.name(automaton.getServiceName())
-								.shortCode(generatedShortCode) // ← Ici c'est maintenant un String
+								.shortCode(generatedShortCode)
 								.jsonConfig(request.getJsonConfig())
-								.apiBaseUrl(automaton.getApiConfig().getBaseUrl())
+								.apiBaseUrl(
+										automaton.getApiConfig() != null ? automaton.getApiConfig().getBaseUrl() : null)
 								.isActive(true)
 								.createdAt(LocalDateTime.now())
 								.updatedAt(LocalDateTime.now())
@@ -65,10 +63,13 @@ public class ServiceAdminController {
 				.map(this::toResponse)
 				.doOnSuccess(s -> log.info("Service registered: {}", s.getCode()))
 				.onErrorResume(e -> {
+					if (e instanceof com.network.projet.ussd.exception.ServiceAlreadyExistsException) {
+						return Mono.error(e);
+					}
 					log.error("Failed to register service", e);
 					return Mono.error(new ResponseStatusException(
 							HttpStatus.BAD_REQUEST,
-							"Invalid service JSON config: " + e.getMessage()));
+							"Configuration JSON invalide : " + e.getMessage()));
 				});
 	}
 
@@ -123,13 +124,20 @@ public class ServiceAdminController {
 	 */
 	@PatchMapping("/{code}/status")
 	public Mono<ServiceInfoResponse> toggleStatus(@PathVariable String code) {
+		log.info("Toggling status for service: {}", code);
 		return serviceRepository.findByCode(code)
 				.flatMap(service -> {
-					service.setIsActive(!service.getIsActive());
+					// Protection null-safe
+					boolean currentStatus = service.getIsActive() != null ? service.getIsActive() : true;
+					boolean newStatus = !currentStatus;
+					service.setIsActive(newStatus);
 					service.setUpdatedAt(LocalDateTime.now());
+					log.info("Service {} status changed: {} -> {}", code, currentStatus, newStatus);
 					return serviceRepository.save(service);
 				})
-				.map(this::toResponse);
+				.doOnSuccess(s -> serviceRegistry.invalidateCache(code))
+				.map(this::toResponse)
+				.doOnError(e -> log.error("Error toggling status for service {}: {}", code, e.getMessage()));
 	}
 
 	private ServiceInfoResponse toResponse(UssdService service) {
@@ -139,6 +147,7 @@ public class ServiceAdminController {
 				.name(service.getName())
 				.shortCode(service.getShortCode())
 				.apiBaseUrl(service.getApiBaseUrl())
+				.jsonConfig(service.getJsonConfig())
 				.isActive(service.getIsActive())
 				.createdAt(service.getCreatedAt())
 				.build();

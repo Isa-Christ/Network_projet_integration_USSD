@@ -7,55 +7,56 @@
             http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.23.xsd">
 
     <changeSet id="002-create-ussd-sessions" author="network-project-team">
+
+        <!-- ✅ Évite le crash si la table existe déjà -->
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="ussd_sessions"/>
+            </not>
+        </preConditions>
+
         <createTable tableName="ussd_sessions">
-            <!-- Identifiant technique auto-increment -->
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            
-            <!-- Identifiant unique de session (UUID) -->
+
             <column name="session_id" type="VARCHAR(255)">
                 <constraints nullable="false" unique="true"/>
             </column>
-            
-            <!-- Numéro de téléphone de l'utilisateur -->
+
             <column name="phone_number" type="VARCHAR(20)">
                 <constraints nullable="false"/>
             </column>
-            
-            <!-- Code du service USSD -->
+
             <column name="service_code" type="VARCHAR(50)">
                 <constraints nullable="true"/>
             </column>
-            
-            <!-- État actuel dans l'automate -->
+
             <column name="current_state_id" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>
-            
-            <!-- Données de session (format JSON) -->
+
             <column name="session_data" type="TEXT">
                 <constraints nullable="false"/>
             </column>
-            
-            <!-- Indicateur de session active -->
+
             <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-            
-            <!-- Timestamps -->
+
             <column name="created_at" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
-            
+
             <column name="updated_at" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
-            
+
             <column name="expires_at" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
+
     </changeSet>
 
 </databaseChangeLog>

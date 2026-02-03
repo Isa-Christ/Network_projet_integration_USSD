@@ -7,6 +7,14 @@
             http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
     <changeSet id="001-create-ussd-service-table" author="network-project">
+
+        <!-- ✅ Sécurité si la table existe déjà -->
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="ussd_service"/>
+            </not>
+        </preConditions>
+
         <createTable tableName="ussd_service">
             <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
@@ -26,9 +34,7 @@
 
             <column name="api_base_url" type="VARCHAR(255)"/>
 
-            <column name="is_active"
-                    type="BOOLEAN"
-                    defaultValueBoolean="true">
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
 
@@ -49,6 +55,7 @@
                      tableName="ussd_service">
             <column name="code"/>
         </createIndex>
+
     </changeSet>
 
 </databaseChangeLog>

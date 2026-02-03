@@ -64,7 +64,7 @@
       "id": "3",
       "name": "DisplayTodoList",
       "type": "DISPLAY",
-      "message": "Your Tasks:{{#each tasks}}{{id}}. {{title}} {{#if completed}}✓{{else}}○{{/if}}{{/each}}99. Back to menu",
+      "message": "Your Tasks:{{#each tasks}}\n{{id}}. {{title}} {{#if completed}}✓{{else}}○{{/if}}{{/each}}\n99. Back to menu",
       "transitions": [
         {"input": "99", "nextState": "1"}
       ]

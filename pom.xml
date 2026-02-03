@@ -20,7 +20,7 @@
         <lombok.version>1.18.32</lombok.version>
     </properties>
     
-    <dependencies>
+    <dependencies>        
         <!-- Spring Boot WebFlux -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -32,12 +32,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-r2dbc</artifactId>
         </dependency>
-        
-        <!-- Driver R2DBC PostgreSQL -->
+
+        <!-- R2DBC PostgreSQL - VERSION EXPLICITE -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>r2dbc-postgresql</artifactId>
             <scope>runtime</scope>
+            <version>1.0.2.RELEASE</version>
         </dependency>
         
         <!-- Driver R2DBC H2 (Optionnel pour test local facile) -->
@@ -118,6 +119,27 @@
             <groupId>com.github.jknack</groupId>
             <artifactId>handlebars</artifactId>
             <version>4.3.1</version>
+        </dependency>
+        
+
+        <!-- Swagger Parser -->
+        <dependency>
+            <groupId>io.swagger.parser.v3</groupId>
+            <artifactId>swagger-parser</artifactId>
+            <version>2.1.19</version>
+        </dependency>
+
+        <!-- Commons IO (pour lecture fichiers) -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.15.1</version>
+        </dependency>
+
+        <!-- Cache Caffeine (pour cache configs générées) -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
     </dependencies>
     

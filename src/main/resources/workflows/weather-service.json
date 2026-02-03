@@ -5,14 +5,14 @@
   "description": "Real-time weather information",
   
   "apiConfig": {
-    "baseUrl": "https://api.openweathermap.org/data/2.5",
+    "baseUrl": "http://api.openweathermap.org/data/2.5",
     "timeout": 10000,
     "retryAttempts": 2,
     "authentication": {
       "type": "API_KEY",
       "credentials": {
         "paramName": "appid",
-        "apiKey": "${OPENWEATHER_API_KEY}"
+        "apiKey": "8905405b6a9406b81898a02ab6b3b430"
       }
     }
   },
@@ -43,11 +43,11 @@
       "message": "Select your city:\n1. Yaounde\n2. Douala\n3. Bafoussam\n4. Garoua\n5. Bamenda\n99. Back",
       "storeAs": "selectedCity",
       "transitions": [
-        {"input": "1", "nextState": "3", "value": "Yaounde"},
-        {"input": "2", "nextState": "3", "value": "Douala"},
-        {"input": "3", "nextState": "3", "value": "Bafoussam"},
-        {"input": "4", "nextState": "3", "value": "Garoua"},
-        {"input": "5", "nextState": "3", "value": "Bamenda"},
+        {"input": "1", "nextState": "3", "value": "Yaounde,CM"},
+        {"input": "2", "nextState": "3", "value": "Douala,CM"},
+        {"input": "3", "nextState": "3", "value": "Bafoussam,CM"},
+        {"input": "4", "nextState": "3", "value": "Garoua,CM"},
+        {"input": "5", "nextState": "3", "value": "Bamenda,CM"},
         {"input": "99", "nextState": "1"}
       ]
     },
@@ -60,16 +60,16 @@
       "action": {
         "type": "API_CALL",
         "method": "GET",
-        "endpoint": "/weather?q={{selectedCity}},CM&units=metric",
+        "endpoint": "/weather?q={{selectedCity}}&units=metric",
         "onSuccess": {
           "nextState": "4",
           "responseMapping": {
-            "temperature": "data.main.temp",
-            "feelsLike": "data.main.feels_like",
-            "humidity": "data.main.humidity",
-            "description": "data.weather[0].description",
-            "windSpeed": "data.wind.speed",
-            "cityName": "data.name"
+            "temperature": "main.temp",
+            "feelsLike": "main.feels_like",
+            "humidity": "main.humidity",
+            "description": "weather.0.description",
+            "windSpeed": "wind.speed",
+            "cityName": "name"
           }
         },
         "onError": {
@@ -87,7 +87,7 @@
       "id": "4",
       "name": "DisplayCurrentWeather",
       "type": "DISPLAY",
-      "message": "🌤️ Weather in {{cityName}}\n\nTemp: {{temperature}}°C\nFeels like: {{feelsLike}}°C\nCondition: {{description}}\nHumidity: {{humidity}}%\nWind: {{windSpeed}} m/s\n\n1. Check another city\n99. Main menu",
+      "message": "Weather in {{cityName}}\n\nTemp: {{temperature}}C\nFeels like: {{feelsLike}}C\nCondition: {{description}}\nHumidity: {{humidity}}%\nWind: {{windSpeed}} m/s\n\n1. Check another city\n99. Main menu",
       "transitions": [
         {"input": "1", "nextState": "2"},
         {"input": "99", "nextState": "1"}
@@ -125,13 +125,13 @@
         "onSuccess": {
           "nextState": "7",
           "responseMapping": {
-            "temperature": "data.main.temp",
-            "feelsLike": "data.main.feels_like",
-            "humidity": "data.main.humidity",
-            "description": "data.weather[0].description",
-            "windSpeed": "data.wind.speed",
-            "cityName": "data.name",
-            "country": "data.sys.country"
+            "temperature": "main.temp",
+            "feelsLike": "main.feels_like",
+            "humidity": "main.humidity",
+            "description": "weather.0.description",
+            "windSpeed": "wind.speed",
+            "cityName": "name",
+            "country": "sys.country"
           }
         },
         "onError": {
@@ -149,7 +149,7 @@
       "id": "7",
       "name": "DisplayCustomCityWeather",
       "type": "DISPLAY",
-      "message": "🌤️ Weather in {{cityName}}, {{country}}\n\nTemp: {{temperature}}°C\nFeels like: {{feelsLike}}°C\nCondition: {{description}}\nHumidity: {{humidity}}%\nWind: {{windSpeed}} m/s\n\n1. Check another city\n2. Select from list\n99. Main menu",
+      "message": "Weather in {{cityName}}, {{country}}\n\nTemp: {{temperature}}C\nFeels like: {{feelsLike}}C\nCondition: {{description}}\nHumidity: {{humidity}}%\nWind: {{windSpeed}} m/s\n\n1. Check another city\n2. Select from list\n99. Main menu",
       "transitions": [
         {"input": "1", "nextState": "5"},
         {"input": "2", "nextState": "2"},
@@ -161,7 +161,7 @@
       "id": "99",
       "name": "ExitMessage",
       "type": "FINAL",
-      "message": "Thank you for using Weather Service!\n\nDial *123*2# anytime to return.",
+      "message": "Thank you for using Weather Service!\n",
       "transitions": []
     }
   ]
