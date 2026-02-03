@@ -1,4 +1,4 @@
-# 📱 USSD Gateway - Service d'intégration USSD multi-services
+# USSD Gateway - Service d'intégration USSD multi-services
 
 > Plateforme moderne de services USSD permettant l'intégration d'APIs REST via une interface USSD intuitive
 
