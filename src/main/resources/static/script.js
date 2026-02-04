@@ -82,16 +82,28 @@ document.addEventListener('DOMContentLoaded', () => {
 function handlePhysicalKeyboard(e) {
     const key = e.key;
 
-    // Si la modale est ouverte, on laisse l'input de la modale gérer
+    // --- LA CORRECTION EST ICI ---
+    // Si l'utilisateur est en train de taper dans n'importe quel input (settings, USSD response, etc.)
+    // On ne veut PAS que ça écrive sur le composeur en arrière-plan.
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        // On autorise juste l'Escape pour fermer les modales même quand on a le focus sur l'input
+        if (key === 'Escape') {
+            closeUssd();
+            if(document.getElementById('settings-modal').classList.contains('active')) toggleSettings();
+        }
+        return; // On arrête la fonction ici
+    }
+
+    // Si la modale USSD est ouverte (cas où l'input n'aurait pas le focus par défaut)
     if (UI.modal.classList.contains('active')) {
         if (key === 'Escape') closeUssd();
         return;
     }
 
-    // Sinon, on gère le composeur (écran principal)
+    // Sinon, gestion normale du composeur (écran principal)
     if (/^[0-9*#]$/.test(key)) {
         typeNumber(key);
-        highlightKey(key); // Petit effet visuel bonus
+        highlightKey(key);
     } else if (key === 'Backspace') {
         deleteChar();
     } else if (key === 'Enter') {
