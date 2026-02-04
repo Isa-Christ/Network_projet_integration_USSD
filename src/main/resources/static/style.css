@@ -392,3 +392,10 @@ body {
     margin-bottom: 15px;
     box-sizing: border-box;
 }
+
+/* Pour s'assurer que l'input des paramètres est bien visible et utilisable */
+.settings-box input:focus {
+    outline: none;
+    border-color: #007AFF; /* Bleu iOS */
+    box-shadow: 0 0 0 2px rgba(0,122,255,0.2);
+}
