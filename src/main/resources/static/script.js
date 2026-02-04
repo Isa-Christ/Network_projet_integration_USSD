@@ -1,9 +1,36 @@
 /** * CONFIGURATION (Ta configuration originale)
  */
-const CONFIG = { 
-    API_URL: 'https://ussd-gateway.onrender.com/api/ussd', // J'ai remis ton port 8080
-    TIMEOUT: 15000, // Un peu plus long pour être sûr
-    PHONE_NUMBER: '237690123456' // Ton numéro de test
+/** * CONFIGURATION DYNAMIQUE */
+let CONFIG = { 
+    API_URL: 'https://ussd-gateway.onrender.com/api/ussd',
+    TIMEOUT: 15000,
+    // On récupère le numéro stocké ou on met un numéro par défaut
+    PHONE_NUMBER: localStorage.getItem('ussd_phone') || '237690123456' 
+};
+
+// Fonctions pour gérer les réglages
+window.toggleSettings = function() {
+    const modal = document.getElementById('settings-modal');
+    const input = document.getElementById('config-phone');
+    
+    if (!modal.classList.contains('active')) {
+        input.value = CONFIG.PHONE_NUMBER; // Pré-remplir avec le numéro actuel
+        modal.classList.add('active');
+    } else {
+        modal.classList.remove('active');
+    }
+};
+
+window.saveSettings = function() {
+    const newPhone = document.getElementById('config-phone').value.trim();
+    if (newPhone) {
+        CONFIG.PHONE_NUMBER = newPhone;
+        localStorage.setItem('ussd_phone', newPhone); // Sauvegarde locale
+        showToast("Numéro enregistré : " + newPhone);
+        toggleSettings();
+    } else {
+        showToast("Veuillez entrer un numéro valide");
+    }
 };
 
 /** * ÉTAT GLOBAL 
