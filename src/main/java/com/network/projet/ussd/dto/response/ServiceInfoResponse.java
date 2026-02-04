@@ -12,6 +12,7 @@ public class ServiceInfoResponse {
     private String name;
     private String shortCode;
     private String apiBaseUrl;
+    private String jsonConfig;
     private Boolean isActive;
     private LocalDateTime createdAt;
 }

@@ -15,8 +15,8 @@ export default function Home() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-700 to-cyan-600">
       <div className="text-center">
         <div className="animate-pulse">
-          <h1 className="text-4xl font-bold text-white mb-4">Administration USSD</h1>
-          <p className="text-blue-100">Redirection en cours...</p>
+          <h1 className="text-4xl font-bold text-white mb-4">USSD Administration</h1>
+          <p className="text-blue-100">Redirecting...</p>
         </div>
       </div>
     </div>

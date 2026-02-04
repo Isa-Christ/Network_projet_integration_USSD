@@ -12,12 +12,25 @@ export const apiClient = axios.create({
     },
 });
 
-// Intercepteur pour ajouter le token JWT à chaque requête
+// Intercepteur pour ajouter le token JWT et l'ID admin à chaque requête
 apiClient.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
+        const userStr = localStorage.getItem('user');
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                if (user.id) {
+                    config.headers['X-Admin-Id'] = user.id;
+                }
+            } catch (e) {
+                console.error('Error parsing user data', e);
+            }
         }
         return config;
     },

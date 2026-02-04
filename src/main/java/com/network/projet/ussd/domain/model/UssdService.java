@@ -18,34 +18,37 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Table("ussd_service")
 public class UssdService {
-    
+
     @Id
     private Long id;
-    
+
     @Column("code")
     private String code;
-    
+
     @Column("name")
     private String name;
-    
+
     @Column("short_code")
     private String shortCode;
-    
+
     @Column("json_config")
     private String jsonConfig;
-    
+
     @Column("api_base_url")
     private String apiBaseUrl;
-    
+
     @Column("is_active")
     private Boolean isActive;
-    
+
+    @Column("admin_id")
+    private Long adminId;
+
     @Column("created_at")
     private LocalDateTime createdAt;
-    
+
     @Column("updated_at")
     private LocalDateTime updatedAt;
-    
+
     @Transient
     private AutomatonDefinition automaton;
 }
