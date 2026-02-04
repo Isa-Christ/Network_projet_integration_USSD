@@ -17,7 +17,7 @@ export default function LoginPage() {
         e.preventDefault();
 
         if (!email || !password) {
-            toast.error('Veuillez remplir tous les champs');
+            toast.error('Please fill in all fields');
             return;
         }
 
@@ -25,9 +25,9 @@ export default function LoginPage() {
 
         try {
             await login({ email, password });
-            toast.success('Connexion réussie !');
-        } catch (error) {
-            toast.error('Email ou mot de passe incorrect');
+            toast.success('Login successful!');
+        } catch (error: any) {
+            toast.error(error.message || 'Incorrect email or password');
         } finally {
             setIsLoading(false);
         }
@@ -43,15 +43,15 @@ export default function LoginPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-800">Connexion</h1>
-                    <p className="text-slate-500 mt-2 text-sm">Accédez à votre espace d&apos;administration</p>
+                    <h1 className="text-2xl font-bold text-slate-800">Login</h1>
+                    <p className="text-slate-500 mt-2 text-sm">Access your administration space</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Email */}
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide px-1">
-                            Adresse email
+                            Email Address
                         </label>
                         <div className="relative">
                             <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -60,16 +60,16 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all text-slate-800 bg-slate-50/50 font-medium"
-                                placeholder="votre-email@exemple.com"
+                                placeholder="your-email@example.com"
                                 required
                             />
                         </div>
                     </div>
 
-                    {/* Mot de passe */}
+                    {/* Password */}
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide px-1">
-                            Mot de passe
+                            Password
                         </label>
                         <div className="relative">
                             <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -91,23 +91,23 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* Bouton de connexion */}
+                    {/* Login Button */}
                     <button
                         type="submit"
                         disabled={isLoading}
                         className="btn-primary w-full flex items-center justify-center gap-2 py-4 shadow-xl shadow-primary/20"
                     >
-                        {isLoading ? 'Connexion en cours...' : 'Se connecter'}
+                        {isLoading ? 'Logging in...' : 'Sign In'}
                         {!isLoading && <FiArrowRight className="w-5 h-5" />}
                     </button>
                 </form>
 
-                {/* Lien inscription */}
+                {/* register link */}
                 <div className="mt-10 pt-6 border-t border-slate-100 text-center">
                     <p className="text-slate-600 text-sm">
-                        Vous n&apos;avez pas encore de compte ?{' '}
+                        Don&apos;t have an account yet?{' '}
                         <Link href="/auth/register" className="text-primary hover:underline font-bold transition-all">
-                            Créer un compte
+                            Create an account
                         </Link>
                     </p>
                 </div>
@@ -115,7 +115,7 @@ export default function LoginPage() {
 
             {/* Copyright */}
             <p className="absolute bottom-8 text-slate-400 text-[10px] font-bold uppercase tracking-widest opacity-50">
-                © 2026 USSD Admin • Système de Gestion
+                © 2026 USSD Admin • Management System
             </p>
         </div>
     );

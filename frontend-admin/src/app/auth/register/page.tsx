@@ -20,17 +20,17 @@ export default function RegisterPage() {
         e.preventDefault();
 
         if (!name || !email || !password || !confirmPassword) {
-            toast.error('Veuillez remplir tous les champs');
+            toast.error('Please fill in all fields');
             return;
         }
 
         if (password !== confirmPassword) {
-            toast.error('Les mots de passe ne correspondent pas');
+            toast.error('Passwords do not match');
             return;
         }
 
         if (password.length < 6) {
-            toast.error('Le mot de passe doit contenir au moins 6 caractères');
+            toast.error('Password must be at least 6 characters long');
             return;
         }
 
@@ -38,9 +38,9 @@ export default function RegisterPage() {
 
         try {
             await register({ name, email, password, confirmPassword });
-            toast.success('Compte créé avec succès !');
-        } catch (error) {
-            toast.error('Une erreur est survenue lors de l\'inscription');
+            toast.success('Account created successfully!');
+        } catch (error: any) {
+            toast.error(error.message || 'An error occurred during registration');
         } finally {
             setIsLoading(false);
         }
@@ -56,15 +56,15 @@ export default function RegisterPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                         </svg>
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-800">Créer un compte</h1>
-                    <p className="text-slate-500 mt-2 text-sm">Rejoignez l&apos;administration USSD</p>
+                    <h1 className="text-2xl font-bold text-slate-800">Create an account</h1>
+                    <p className="text-slate-500 mt-2 text-sm">Join USSD Administration</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Nom */}
+                    {/* Name */}
                     <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide px-1">
-                            Nom complet
+                            Full Name
                         </label>
                         <div className="relative">
                             <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -73,7 +73,7 @@ export default function RegisterPage() {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all text-slate-800 bg-slate-50/50 font-medium"
-                                placeholder="Jean Dupont"
+                                placeholder="John Doe"
                                 required
                             />
                         </div>
@@ -82,7 +82,7 @@ export default function RegisterPage() {
                     {/* Email */}
                     <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide px-1">
-                            Adresse email
+                            Email Address
                         </label>
                         <div className="relative">
                             <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -98,10 +98,10 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Mot de passe */}
+                        {/* Password */}
                         <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide px-1">
-                                Mot de passe
+                                Password
                             </label>
                             <div className="relative">
                                 <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -126,7 +126,7 @@ export default function RegisterPage() {
                         {/* Confirmation */}
                         <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide px-1">
-                                Confirmation
+                                Confirm Password
                             </label>
                             <div className="relative">
                                 <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -149,23 +149,23 @@ export default function RegisterPage() {
                         </div>
                     </div>
 
-                    {/* Bouton d'inscription */}
+                    {/* register button */}
                     <button
                         type="submit"
                         disabled={isLoading}
                         className="btn-primary w-full flex items-center justify-center gap-2 mt-4 py-4 shadow-xl shadow-primary/20"
                     >
-                        {isLoading ? 'Création en cours...' : 'Créer un compte'}
+                        {isLoading ? 'Creating account...' : 'Create Account'}
                         {!isLoading && <FiArrowRight className="w-5 h-5" />}
                     </button>
                 </form>
 
-                {/* Lien connexion */}
+                {/* Login link */}
                 <div className="mt-8 pt-6 border-t border-slate-100 text-center">
                     <p className="text-slate-600 text-sm">
-                        Vous avez déjà un compte ?{' '}
+                        Already have an account?{' '}
                         <Link href="/auth/login" className="text-primary hover:underline font-bold transition-all">
-                            Se connecter
+                            Sign In
                         </Link>
                     </p>
                 </div>
@@ -173,7 +173,7 @@ export default function RegisterPage() {
 
             {/* Copyright */}
             <p className="absolute bottom-8 text-slate-400 text-[10px] font-bold uppercase tracking-widest opacity-50">
-                © 2026 USSD Admin • Système de Gestion
+                © 2026 USSD Admin • Management System
             </p>
         </div>
     );

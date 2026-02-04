@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiHome, FiPlusCircle, FiList, FiLogOut } from 'react-icons/fi';
+import { FiHome, FiPlusCircle, FiList, FiLogOut, FiCpu } from 'react-icons/fi';
 import { useAuth } from '@/context/AuthContext';
 
 const menuItems = [
@@ -12,14 +12,19 @@ const menuItems = [
         icon: FiHome,
     },
     {
-        name: 'Ajouter un service',
+        name: 'Add Service',
         href: '/dashboard/services/add',
         icon: FiPlusCircle,
     },
     {
-        name: 'Liste des services',
+        name: 'Service List',
         href: '/dashboard/services/list',
         icon: FiList,
+    },
+    {
+        name: 'AI Generator',
+        href: '/dashboard/ai-generator',
+        icon: FiCpu,
     },
 ];
 
@@ -46,12 +51,12 @@ export default function Sidebar() {
                     </div>
                     <div>
                         <h1 className="text-xl font-bold tracking-tight">USSD Admin</h1>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Plateforme de gestion</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Management Platform</p>
                     </div>
                 </div>
             </div>
 
-            {/* Menu de navigation */}
+            {/* Navigation Menu */}
             <nav className="flex-1 px-4 py-8 space-y-2">
                 {menuItems.map((item) => {
                     const Icon = item.icon;
@@ -83,7 +88,7 @@ export default function Sidebar() {
                     className="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-white/5 hover:bg-red-500/10 text-slate-400 hover:text-red-500 rounded-xl transition-all duration-300 font-bold text-sm group"
                 >
                     <FiLogOut className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-                    <span>Déconnexion</span>
+                    <span>Logout</span>
                 </button>
             </div>
         </div>

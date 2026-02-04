@@ -11,12 +11,12 @@ export default function Header() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-8">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800">Administration USSD</h2>
-                        <p className="text-slate-400 text-xs font-semibold">Portail de supervision multi-services</p>
+                        <h2 className="text-xl font-bold text-slate-800">USSD Administration</h2>
+                        <p className="text-slate-400 text-xs font-semibold">Multi-service supervision portal</p>
                     </div>
                 </div>
 
-                {/* Actions et profil */}
+                {/* Actions and profile */}
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2 border-r border-slate-200 pr-6 mr-2">
                         <button className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-full transition-colors relative group">
@@ -33,10 +33,10 @@ export default function Header() {
                         </button>
                     </div>
 
-                    {/* Profil utilisateur */}
+                    {/* User profile */}
                     <div className="flex items-center gap-4 group cursor-pointer">
                         <div className="text-right hidden sm:block">
-                            <p className="font-bold text-slate-800 text-sm">Hello good!</p>
+                            <p className="font-bold text-slate-800 text-sm">{user?.name || 'Administrator'}</p>
                             <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{user?.email || 'admin@ussd.com'}</p>
                         </div>
                         <div className="w-11 h-11 rounded-xl bg-primary-dark flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20 transition-transform group-hover:scale-105">

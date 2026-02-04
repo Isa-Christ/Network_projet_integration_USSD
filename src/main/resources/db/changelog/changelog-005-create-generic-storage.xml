@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+            http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="005-create-generic-storage" author="network-project-team">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="generic_storage"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="generic_storage">
+
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="phone_number" type="VARCHAR(15)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="service_code" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="storage_key" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- JSONB PostgreSQL -->
+            <column name="storage_value" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at"
+                    type="TIMESTAMP"
+                    defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at"
+                    type="TIMESTAMP"
+                    defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+        <!-- Contrainte d'unicité (phone_number, service_code, storage_key) -->
+        <addUniqueConstraint
+                tableName="generic_storage"
+                columnNames="phone_number, service_code, storage_key"
+                constraintName="uk_generic_storage_unique_key"/>
+
+        <!-- Index pour lookup rapide -->
+        <createIndex indexName="idx_generic_storage_lookup"
+                     tableName="generic_storage">
+            <column name="phone_number"/>
+            <column name="service_code"/>
+        </createIndex>
+
+    </changeSet>
+
+</databaseChangeLog>

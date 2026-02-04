@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createService } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -14,6 +14,38 @@ export default function AddServicePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isValid, setIsValid] = useState(true);
     const router = useRouter();
+    // Use window.location because useSearchParams might cause static build issues if not wrapped in Suspense
+    // But for client component it's usually fine. Let's stick to standard useEffect with window.
+
+    // Check for generated config on mount
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && !isInitialized) {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('mode') === 'generated') {
+                const storedConfig = localStorage.getItem('generated_ussd_config');
+                if (storedConfig) {
+                    try {
+                        const parsed = JSON.parse(storedConfig);
+                        setJsonConfig(JSON.stringify(parsed, null, 2));
+                        if (parsed.serviceName) setServiceName(parsed.serviceName);
+                        if (parsed.serviceCode) setServiceCode(parsed.serviceCode);
+
+                        toast.success('AI-generated configuration loaded!', {
+                            icon: '🤖',
+                            duration: 4000
+                        });
+
+                    } catch (e) {
+                        console.error("Failed to parse generated config", e);
+                        toast.error("Error loading generated configuration");
+                    }
+                }
+            }
+            setIsInitialized(true);
+        }
+    }, [isInitialized]);
 
     const handleJsonChange = (value: string) => {
         setJsonConfig(value);
@@ -39,9 +71,9 @@ export default function AddServicePage() {
             const formatted = JSON.stringify(parsed, null, 2);
             setJsonConfig(formatted);
             setIsValid(true);
-            toast.success('JSON formaté avec succès');
+            toast.success('JSON formatted successfully');
         } catch (error) {
-            toast.error('JSON invalide, impossible de formater');
+            toast.error('Invalid JSON, cannot format');
         }
     };
 
@@ -49,12 +81,12 @@ export default function AddServicePage() {
         e.preventDefault();
 
         if (!jsonConfig.trim()) {
-            toast.error('Veuillez fournir la configuration JSON');
+            toast.error('Please provide the JSON configuration');
             return;
         }
 
         if (!isValid) {
-            toast.error('La configuration JSON est invalide');
+            toast.error('The JSON configuration is invalid');
             return;
         }
 
@@ -62,11 +94,11 @@ export default function AddServicePage() {
 
         try {
             await createService({ jsonConfig });
-            toast.success('Service ajouté avec succès !');
+            toast.success('Service added successfully!', { id: 'add-service-success' });
             router.push('/dashboard/services/list');
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || 'Erreur lors de l\'ajout du service';
-            toast.error(errorMessage);
+            const errorMessage = error.response?.data?.message || error.message || 'Error adding service';
+            toast.error(errorMessage, { id: 'add-service-error' });
         } finally {
             setIsLoading(false);
         }
@@ -91,10 +123,10 @@ export default function AddServicePage() {
     const loadExample = () => {
         const formatted = JSON.stringify(exampleJson, null, 2);
         setJsonConfig(formatted);
-        setServiceName("Service Bancaire");
+        setServiceName("Banking Service");
         setServiceCode("BANK_SERVICE");
         setIsValid(true);
-        toast.success('Exemple chargé');
+        toast.success('Example loaded');
     };
 
     return (
@@ -102,15 +134,15 @@ export default function AddServicePage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Ajouter un Nouveau Service</h1>
-                    <p className="text-slate-500 text-sm">Créez un nouveau service USSD en fournissant sa configuration</p>
+                    <h1 className="text-2xl font-bold text-slate-800">Add New Service</h1>
+                    <p className="text-slate-500 text-sm">Create a new USSD service by providing its configuration</p>
                 </div>
                 <Link
                     href="/dashboard/services/list"
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-bold text-sm shadow-sm"
                 >
                     <FiArrowLeft className="w-4 h-4" />
-                    <span>Retour à la liste</span>
+                    <span>Back to List</span>
                 </Link>
             </div>
 
@@ -132,7 +164,7 @@ export default function AddServicePage() {
                                         onClick={loadExample}
                                         className="px-3 py-1.5 text-xs font-bold bg-slate-50 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
                                     >
-                                        Charger exemple
+                                        Load Example
                                     </button>
                                     <button
                                         type="button"
@@ -140,7 +172,7 @@ export default function AddServicePage() {
                                         className="px-3 py-1.5 text-xs font-bold bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1.5"
                                     >
                                         <FiCode className="w-3.5 h-3.5" />
-                                        Formater
+                                        Format
                                     </button>
                                 </div>
                             </div>
@@ -161,13 +193,13 @@ export default function AddServicePage() {
                                     {!isValid && jsonConfig.trim() && (
                                         <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 text-red-600 text-[10px] font-bold uppercase tracking-wider animate-bounce">
                                             <FiX className="w-3.5 h-3.5" />
-                                            JSON Invalide
+                                            Invalid JSON
                                         </span>
                                     )}
                                     {isValid && jsonConfig.trim() && (
                                         <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">
                                             <FiCheck className="w-3.5 h-3.5" />
-                                            JSON Valide
+                                            Valid JSON
                                         </span>
                                     )}
                                 </div>
@@ -175,28 +207,27 @@ export default function AddServicePage() {
                         </div>
                     </div>
 
-                    {/* Section droite - Informations du service */}
                     <div className="lg:col-span-1 space-y-6">
                         <div className="card-shadow p-6">
-                            <h2 className="text-lg font-bold text-slate-800 mb-6">Paramètres</h2>
+                            <h2 className="text-lg font-bold text-slate-800 mb-6">Settings</h2>
 
                             <div className="space-y-5">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">
-                                        Nom du Service
+                                        Service Name
                                     </label>
                                     <input
                                         type="text"
                                         value={serviceName}
                                         onChange={(e) => setServiceName(e.target.value)}
                                         className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all text-slate-800 font-semibold"
-                                        placeholder="Ex: Mon Super Service"
+                                        placeholder="Ex: My Awesome Service"
                                     />
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">
-                                        Code du Service
+                                        Service Code
                                     </label>
                                     <input
                                         type="text"
@@ -216,19 +247,18 @@ export default function AddServicePage() {
                                     <span className="w-6 h-6 bg-white/10 rounded-lg flex items-center justify-center">
                                         <FiCode className="w-3 h-3" />
                                     </span>
-                                    Aide au formatage
+                                    Formatting Help
                                 </h3>
                                 <div className="space-y-3 text-xs leading-relaxed">
-                                    <p><strong className="text-white">serviceCode</strong> : Identifiant interne unique.</p>
-                                    <p><strong className="text-white">serviceName</strong> : Nom public du service.</p>
-                                    <p><strong className="text-white">apiConfig</strong> : URL et timeout du backend.</p>
-                                    <p><strong className="text-white">states</strong> : Diagramme d&apos;états de l&apos;automate.</p>
+                                    <p><strong className="text-white">serviceCode</strong>: Unique internal identifier.</p>
+                                    <p><strong className="text-white">serviceName</strong>: Public name of the service.</p>
+                                    <p><strong className="text-white">apiConfig</strong>: Backend URL and timeout.</p>
+                                    <p><strong className="text-white">states</strong>: Automaton state diagram.</p>
                                 </div>
                             </div>
                             <FiCode className="absolute -bottom-8 -right-8 w-32 h-32 text-white/5 transition-transform group-hover:scale-110 group-hover:rotate-12" />
                         </div>
 
-                        {/* Bouton d'enregistrement */}
                         <button
                             type="submit"
                             disabled={isLoading || !isValid || !jsonConfig.trim()}
@@ -236,7 +266,7 @@ export default function AddServicePage() {
                         >
                             <FiSave className="w-5 h-5" />
                             <span className="text-lg">
-                                {isLoading ? 'Enregistrement...' : 'Enregistrer'}
+                                {isLoading ? 'Saving...' : 'Save Service'}
                             </span>
                         </button>
                     </div>

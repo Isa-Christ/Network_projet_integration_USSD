@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
  * - Default: *500*1#, *500*2#, *500*3#...
  * - Custom: *777*1# (Orange), *678*1# (Camtel)
  * 
- * @author Magne Isabelle Christ
+ * @authorNetwork Project Team
  * @since 2026-01-06
  * @version 1.0.0
  */

@@ -12,6 +12,7 @@ export default function ServiceListPage() {
     const [services, setServices] = useState<ServiceInfoResponse[]>([]);
     const [filteredServices, setFilteredServices] = useState<ServiceInfoResponse[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'BLOCKED'>('ALL');
     const [isLoading, setIsLoading] = useState(true);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const router = useRouter();
@@ -21,17 +22,25 @@ export default function ServiceListPage() {
     }, []);
 
     useEffect(() => {
-        if (!searchTerm.trim()) {
-            setFilteredServices(services);
-        } else {
-            const filtered = services.filter((service) =>
+        let filtered = services;
+
+        // Search filter
+        if (searchTerm.trim()) {
+            filtered = filtered.filter((service) =>
                 service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 service.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 service.shortCode.toLowerCase().includes(searchTerm.toLowerCase())
             );
-            setFilteredServices(filtered);
         }
-    }, [searchTerm, services]);
+
+        // Status filter
+        if (statusFilter !== 'ALL') {
+            const wantActive = statusFilter === 'ACTIVE';
+            filtered = filtered.filter((service) => service.isActive === wantActive);
+        }
+
+        setFilteredServices(filtered);
+    }, [searchTerm, statusFilter, services]);
 
     const loadServices = async () => {
         setIsLoading(true);
@@ -40,7 +49,7 @@ export default function ServiceListPage() {
             setServices(data);
             setFilteredServices(data);
         } catch (error) {
-            toast.error('Erreur lors du chargement des services');
+            toast.error('Error loading services', { id: 'load-services-error' });
         } finally {
             setIsLoading(false);
         }
@@ -49,21 +58,22 @@ export default function ServiceListPage() {
     const handleDelete = async (code: string) => {
         try {
             await deleteService(code);
-            toast.success('Service supprimé avec succès');
-            loadServices();
+            toast.success('Service deleted successfully');
             setDeleteConfirm(null);
+            loadServices();
         } catch (error) {
-            toast.error('Erreur lors de la suppression');
+            toast.error('Error during deletion', { id: 'delete-error' });
         }
     };
 
-    const handleToggleStatus = async (code: string) => {
+    const handleToggleStatus = async (code: string, currentStatus: boolean) => {
+        const action = currentStatus ? 'blocked' : 'activated';
         try {
             await toggleServiceStatus(code);
-            toast.success('Statut mis à jour');
+            toast.success(`Service ${action} successfully`);
             loadServices();
         } catch (error) {
-            toast.error('Erreur lors de la modification du statut');
+            toast.error(`Error updating status`, { id: 'toggle-error' });
         }
     };
 
@@ -72,7 +82,7 @@ export default function ServiceListPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-slate-600 font-medium">Chargement des services...</p>
+                    <p className="text-slate-600 font-medium">Loading services...</p>
                 </div>
             </div>
         );
@@ -83,21 +93,22 @@ export default function ServiceListPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Liste des Services</h1>
-                    <p className="text-slate-500 text-sm">Consultez et gérez l&apos;ensemble de vos plateformes USSD</p>
+                    <h1 className="text-2xl font-bold text-slate-800">Service List</h1>
+                    <p className="text-slate-500 text-sm">View and manage all your USSD platforms</p>
                 </div>
                 <Link
                     href="/dashboard/services/add"
                     className="btn-primary flex items-center justify-center gap-2 shadow-xl shadow-primary/10"
                 >
                     <FiPlusCircle className="w-5 h-5" />
-                    <span>Nouveau Service</span>
+                    <span>New Service</span>
                 </Link>
             </div>
 
-            {/* Barre de recherche et filtres */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-                <div className="flex items-center gap-4">
+            {/* Search bar and filters */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    {/* Search field */}
                     <div className="flex-1 relative group">
                         <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 transition-colors group-focus-within:text-primary" />
                         <input
@@ -105,27 +116,87 @@ export default function ServiceListPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-12 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-medium text-slate-800"
-                            placeholder="Rechercher par nom, code ou short code..."
+                            placeholder="Search by name, code or short code..."
                         />
+                        {searchTerm && (
+                            <button
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
                     </div>
-                    <button className="flex items-center gap-2 px-5 py-3 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm">
-                        <FiFilter className="w-5 h-5" />
-                        <span className="hidden sm:inline">Filtrer</span>
-                    </button>
+
+                    {/* Status filter with badges */}
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setStatusFilter('ALL')}
+                            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${statusFilter === 'ALL'
+                                ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                                : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                                }`}
+                        >
+                            All ({services.length})
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('ACTIVE')}
+                            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${statusFilter === 'ACTIVE'
+                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25'
+                                : 'bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600'
+                                }`}
+                        >
+                            <span className={`w-2 h-2 rounded-full ${statusFilter === 'ACTIVE' ? 'bg-white' : 'bg-emerald-500'}`}></span>
+                            Active ({services.filter(s => s.isActive).length})
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('BLOCKED')}
+                            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${statusFilter === 'BLOCKED'
+                                ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
+                                : 'bg-slate-50 text-slate-600 hover:bg-rose-50 hover:text-rose-600'
+                                }`}
+                        >
+                            <span className={`w-2 h-2 rounded-full ${statusFilter === 'BLOCKED' ? 'bg-white' : 'bg-rose-500'}`}></span>
+                            Blocked ({services.filter(s => !s.isActive).length})
+                        </button>
+                    </div>
                 </div>
+
+                {/* Summary of active filters */}
+                {(searchTerm || statusFilter !== 'ALL') && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <p className="text-xs text-slate-500 font-medium">
+                            <span className="font-bold text-primary">{filteredServices.length}</span> result{filteredServices.length > 1 ? 's' : ''} found
+                        </p>
+                        <button
+                            onClick={() => {
+                                setSearchTerm('');
+                                setStatusFilter('ALL');
+                            }}
+                            className="text-xs font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-1"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Reset
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {/* Tableau des services */}
+            {/* Services table */}
             <div className="card-shadow overflow-hidden bg-white">
                 {filteredServices.length === 0 ? (
                     <div className="text-center py-20 px-4">
                         <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                             <FiSearch className="w-10 h-10 text-slate-300" />
                         </div>
-                        <p className="text-slate-600 font-bold mb-1">Aucun service trouvé</p>
-                        <p className="text-slate-400 text-sm mb-6">Essayez d&apos;ajuster vos critères de recherche</p>
+                        <p className="text-slate-600 font-bold mb-1">No services found</p>
+                        <p className="text-slate-400 text-sm mb-6">Try adjusting your search criteria</p>
                         <button onClick={() => setSearchTerm('')} className="text-primary font-bold hover:underline">
-                            Réinitialiser la recherche
+                            Reset Search
                         </button>
                     </div>
                 ) : (
@@ -133,10 +204,10 @@ export default function ServiceListPage() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-none">Informations</th>
+                                    <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-none">Information</th>
                                     <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-none">Code & API</th>
                                     <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-none">Short Code</th>
-                                    <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-none">Statut</th>
+                                    <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-none">Status</th>
                                     <th className="text-right py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-none">Actions</th>
                                 </tr>
                             </thead>
@@ -145,7 +216,7 @@ export default function ServiceListPage() {
                                     <tr key={service.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="py-5 px-6">
                                             <div className="font-bold text-slate-800 text-base">{service.name}</div>
-                                            <div className="text-slate-400 text-xs mt-0.5">Créé le {new Date(service.createdAt).toLocaleDateString()}</div>
+                                            <div className="text-slate-400 text-xs mt-0.5">Created on {new Date(service.createdAt).toLocaleDateString('en-US')}</div>
                                         </td>
                                         <td className="py-5 px-6">
                                             <code className="px-2 py-1 bg-slate-100 rounded text-[10px] font-mono text-slate-600 font-bold uppercase tracking-wider">{service.code}</code>
@@ -158,14 +229,15 @@ export default function ServiceListPage() {
                                         </td>
                                         <td className="py-5 px-6">
                                             <button
-                                                onClick={() => handleToggleStatus(service.code)}
+                                                onClick={() => handleToggleStatus(service.code, service.isActive)}
                                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase border transition-all ${service.isActive
-                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                                        : 'bg-slate-100 text-slate-400 border-slate-200'
+                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
+                                                    : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100'
                                                     }`}
+                                                title={service.isActive ? "Click to block" : "Click to activate"}
                                             >
-                                                <span className={`w-1.5 h-1.5 rounded-full ${service.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-                                                {service.isActive ? 'Actif' : 'Inactif'}
+                                                <span className={`w-1.5 h-1.5 rounded-full ${service.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                                                {service.isActive ? 'Active' : 'Blocked'}
                                             </button>
                                         </td>
                                         <td className="py-5 px-6">
@@ -173,14 +245,14 @@ export default function ServiceListPage() {
                                                 <button
                                                     onClick={() => router.push(`/dashboard/services/edit/${service.code}`)}
                                                     className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
-                                                    title="Modifier"
+                                                    title="Edit"
                                                 >
                                                     <FiEdit2 className="w-4 h-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => setDeleteConfirm(service.code)}
                                                     className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                                    title="Supprimer"
+                                                    title="Delete"
                                                 >
                                                     <FiTrash2 className="w-4 h-4" />
                                                 </button>
@@ -197,7 +269,7 @@ export default function ServiceListPage() {
                 )}
             </div>
 
-            {/* Modal de confirmation de suppression */}
+            {/* Delete confirmation modal */}
             {deleteConfirm && (
                 <div className="fixed inset-0 bg-primary-dark/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
                     <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full border border-slate-100">
@@ -207,8 +279,8 @@ export default function ServiceListPage() {
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-3">Confirmation</h3>
                             <p className="text-slate-500 text-sm leading-relaxed">
-                                Souhaitez-vous vraiment supprimer ce service ?<br />
-                                <span className="font-bold text-red-500 uppercase tracking-widest text-[10px]">Cette action est irréversible</span>
+                                Are you sure you want to delete this service?<br />
+                                <span className="font-bold text-red-500 uppercase tracking-widest text-[10px]">This action is irreversible</span>
                             </p>
                         </div>
                         <div className="flex gap-3">
@@ -216,13 +288,13 @@ export default function ServiceListPage() {
                                 onClick={() => setDeleteConfirm(null)}
                                 className="flex-1 px-5 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm transition-all"
                             >
-                                Annuler
+                                Cancel
                             </button>
                             <button
                                 onClick={() => handleDelete(deleteConfirm)}
                                 className="flex-1 px-5 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-red-500/20 transition-all"
                             >
-                                Supprimer
+                                Delete
                             </button>
                         </div>
                     </div>

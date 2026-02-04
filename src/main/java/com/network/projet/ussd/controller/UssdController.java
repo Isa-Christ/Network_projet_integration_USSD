@@ -1,6 +1,7 @@
 package com.network.projet.ussd.controller;
 
 import org.springframework.beans.factory.annotation.Value;
+import com.network.projet.ussd.domain.model.UssdService;
 import com.network.projet.ussd.dto.request.UssdRequest;
 import com.network.projet.ussd.dto.response.UssdResponse;
 import com.network.projet.ussd.exception.ServiceNotFoundException;
@@ -39,14 +40,14 @@ public class UssdController {
     @ResponseStatus(HttpStatus.OK)
     public Mono<UssdResponse> handleUssdRequest(@RequestBody UssdRequest request) {
         log.info("USSD Request - Session: {}, UssdCode: {}, Phone: {}, Text: '{}'",
-                request.getSessionId(), request.getUssdCode(), 
+                request.getSessionId(), request.getUssdCode(),
                 request.getPhoneNumber(), request.getText());
 
         return validateRequest(request)
-            .flatMap(this::routeRequest)
-            .onErrorResume(this::handleError)
-            .doOnSuccess(response -> log.info("USSD Response - Continue: {}, Message: {} chars",
-                    response.isContinueSession(), response.getMessage().length()));
+                .flatMap(this::routeRequest)
+                .onErrorResume(this::handleError)
+                .doOnSuccess(response -> log.info("USSD Response - Continue: {}, Message: {} chars",
+                        response.isContinueSession(), response.getMessage().length()));
     }
 
     /**
@@ -55,27 +56,27 @@ public class UssdController {
     private Mono<UssdResponse> routeRequest(UssdRequest request) {
         String ussdCode = request.getUssdCode();
         String text = request.getText();
-        
+
         return sessionManager.getSession(request.getSessionId())
-            .flatMap(existingSession -> {
-                log.debug("Route: Continuing existing session, currentState={}",
-                        existingSession.getCurrentStateId());
-                return processServiceRequest(request, existingSession);
-            })
-            .switchIfEmpty(Mono.defer(() -> {
-                if (MAIN_MENU_CODE.equals(ussdCode) && isTextEmpty(text)) {
-                    log.debug("Route: Main Menu");
-                    return showMainMenu();
-                }
-                
-                if (MAIN_MENU_CODE.equals(ussdCode) && !isTextEmpty(text)) {
-                    log.debug("Route: Menu Selection → Service");
-                    return handleMenuSelection(request);
-                }
-                
-                log.debug("Route: Direct Service");
-                return createAndProcessServiceRequest(request);
-            }));
+                .flatMap(existingSession -> {
+                    log.debug("Route: Continuing existing session, currentState={}",
+                            existingSession.getCurrentStateId());
+                    return processServiceRequest(request, existingSession);
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    if (MAIN_MENU_CODE.equals(ussdCode) && isTextEmpty(text)) {
+                        log.debug("Route: Main Menu");
+                        return showMainMenu();
+                    }
+
+                    if (MAIN_MENU_CODE.equals(ussdCode) && !isTextEmpty(text)) {
+                        log.debug("Route: Menu Selection → Service");
+                        return handleMenuSelection(request);
+                    }
+
+                    log.debug("Route: Direct Service");
+                    return createAndProcessServiceRequest(request);
+                }));
     }
 
     /**
@@ -83,28 +84,24 @@ public class UssdController {
      */
     private Mono<UssdResponse> showMainMenu() {
         return serviceRegistry.getAllActiveServices()
-            .collectList()
-            .map(services -> {
-                if (services.isEmpty()) {
+                .collectList()
+                .map(services -> {
+                    StringBuilder menu = new StringBuilder("Bienvenue sur USSD Gateway\n");
+
+                    if (services.isEmpty()) {
+                        menu.append("Aucun service disponible.");
+                    } else {
+                        for (int i = 0; i < services.size(); i++) {
+                            menu.append(i + 1).append(". ").append(services.get(i).getName()).append("\n");
+                        }
+                        menu.append("0. Quitter");
+                    }
+
                     return UssdResponse.builder()
-                        .message("Aucun service disponible.")
-                        .continueSession(false)
-                        .build();
-                }
-                
-                StringBuilder menu = new StringBuilder("MENU PRINCIPAL\n\n");
-                for (int i = 0; i < services.size(); i++) {
-                    menu.append(String.format("%d. %s\n", i + 1, services.get(i).getName()));
-                }
-                menu.append("\n0. Quitter");
-                
-                log.info("Main menu displayed with {} services", services.size());
-                
-                return UssdResponse.builder()
-                    .message(menu.toString())
-                    .continueSession(true)
-                    .build();
-            });
+                            .message(menu.toString())
+                            .continueSession(true)
+                            .build();
+                });
     }
 
     /**
@@ -112,54 +109,57 @@ public class UssdController {
      */
     private Mono<UssdResponse> handleMenuSelection(UssdRequest request) {
         String selection = request.getText().trim();
-        
+
         if ("0".equals(selection)) {
             return Mono.just(UssdResponse.builder()
-                .message("Merci d'avoir utilisé nos services. À bientôt!")
-                .continueSession(false)
-                .build());
+                    .message("Merci d'avoir utilisé nos services. À bientôt!")
+                    .continueSession(false)
+                    .build());
         }
-        
+
         int serviceNumber;
         try {
             serviceNumber = Integer.parseInt(selection);
         } catch (NumberFormatException e) {
             return Mono.just(UssdResponse.builder()
-                .message("❌ Entrée invalide. Entrez un numéro.")
-                .continueSession(false)
-                .build());
+                    .message("❌ Entrée invalide. Entrez un numéro.")
+                    .continueSession(false)
+                    .build());
         }
-        
+
         if (serviceNumber < 1) {
             return Mono.just(UssdResponse.builder()
-                .message("❌ Numéro invalide.")
-                .continueSession(false)
-                .build());
+                    .message("❌ Numéro invalide.")
+                    .continueSession(false)
+                    .build());
         }
-        
+
         return serviceRegistry.getAllActiveServices()
-            .collectList()
-            .flatMap(services -> {
-                if (serviceNumber > services.size()) {
-                    return Mono.just(UssdResponse.builder()
-                        .message("❌ Service inexistant. Choisissez entre 1 et " + services.size())
-                        .continueSession(false)
-                        .build());
-                }
-                
-                String targetUssdCode = SERVICE_CODE_PREFIX + serviceNumber + SERVICE_CODE_SUFFIX;
-                
-                log.info("Menu selection {} → USSD code {}", serviceNumber, targetUssdCode);
-                
-                UssdRequest serviceRequest = UssdRequest.builder()
-                    .sessionId(request.getSessionId())
-                    .phoneNumber(request.getPhoneNumber())
-                    .ussdCode(targetUssdCode)
-                    .text("")
-                    .build();
-                
-                return createAndProcessServiceRequest(serviceRequest);
-            });
+                .collectList()
+                .flatMap(services -> {
+                    if (serviceNumber > services.size()) {
+                        return Mono.just(UssdResponse.builder()
+                                .message("❌ Service inexistant. Choisissez entre 1 et " + services.size())
+                                .continueSession(false)
+                                .build());
+                    }
+
+                    // Récupérer le service correspondant dans la liste
+                    UssdService targetService = services.get(serviceNumber - 1);
+                    String targetUssdCode = targetService.getShortCode();
+
+                    log.info("Menu selection {} → Service: {} ({})",
+                            serviceNumber, targetService.getName(), targetUssdCode);
+
+                    UssdRequest serviceRequest = UssdRequest.builder()
+                            .sessionId(request.getSessionId())
+                            .phoneNumber(request.getPhoneNumber())
+                            .ussdCode(targetUssdCode)
+                            .text("")
+                            .build();
+
+                    return createAndProcessServiceRequest(serviceRequest);
+                });
     }
 
     /**
@@ -169,30 +169,29 @@ public class UssdController {
         return sessionManager.getOrCreateSession(
                 request.getSessionId(),
                 request.getPhoneNumber(),
-                request.getUssdCode()
-            )
-            .flatMap(session -> {
-                log.debug("New session created - ID: {}, State: {}",
-                    session.getSessionId(), session.getCurrentStateId());
-                
-                return processServiceRequest(request, session);
-            });
+                request.getUssdCode())
+                .flatMap(session -> {
+                    log.debug("New session created - ID: {}, State: {}",
+                            session.getSessionId(), session.getCurrentStateId());
+
+                    return processServiceRequest(request, session);
+                });
     }
 
     /**
      * Processes request for existing session
      */
-    private Mono<UssdResponse> processServiceRequest(UssdRequest request, 
+    private Mono<UssdResponse> processServiceRequest(UssdRequest request,
             com.network.projet.ussd.domain.model.UssdSession session) {
-        
+
         log.debug("Processing request - SessionId: {}, CurrentState: {}, Input: '{}'",
-            session.getSessionId(), session.getCurrentStateId(), request.getText());
-        
+                session.getSessionId(), session.getCurrentStateId(), request.getText());
+
         return ussdGatewayService.processRequest(request, session)
-            .map(stateResult -> UssdResponse.builder()
-                .message(stateResult.getMessage())
-                .continueSession(stateResult.isContinueSession())
-                .build());
+                .map(stateResult -> UssdResponse.builder()
+                        .message(stateResult.getMessage())
+                        .continueSession(stateResult.isContinueSession())
+                        .build());
     }
 
     /**
@@ -200,17 +199,17 @@ public class UssdController {
      */
     private Mono<UssdResponse> handleError(Throwable error) {
         log.error("USSD Error: {}", error.getMessage(), error);
-        
+
         String message = switch (error) {
             case ServiceNotFoundException e -> "Service indisponible. Contactez le support.";
             case IllegalArgumentException e -> "Requête invalide: " + e.getMessage();
             default -> "Erreur technique. Réessayez plus tard.";
         };
-        
+
         return Mono.just(UssdResponse.builder()
-            .message(message)
-            .continueSession(false)
-            .build());
+                .message(message)
+                .continueSession(false)
+                .build());
     }
 
     /**
@@ -220,19 +219,19 @@ public class UssdController {
         if (isNullOrEmpty(request.getSessionId())) {
             return Mono.error(new IllegalArgumentException("SessionId requis"));
         }
-        
+
         if (isNullOrEmpty(request.getPhoneNumber())) {
             return Mono.error(new IllegalArgumentException("PhoneNumber requis"));
         }
-        
+
         if (isNullOrEmpty(request.getUssdCode())) {
             return Mono.error(new IllegalArgumentException("UssdCode requis"));
         }
-        
+
         if (request.getText() == null) {
             request.setText("");
         }
-        
+
         log.debug("Request validated");
         return Mono.just(request);
     }
@@ -248,18 +247,18 @@ public class UssdController {
     public Mono<String> terminateSession(@PathVariable String sessionId) {
         log.info("Terminating session: {}", sessionId);
         return sessionManager.endSession(sessionId)
-            .thenReturn("Session terminated")
-            .onErrorResume(e -> Mono.just("Error: " + e.getMessage()));
+                .thenReturn("Session terminated")
+                .onErrorResume(e -> Mono.just("Error: " + e.getMessage()));
     }
 
     @GetMapping("/sessions/{sessionId}")
     public Mono<String> getSessionInfo(@PathVariable String sessionId) {
         return sessionManager.getSession(sessionId)
-            .flatMap(session -> sessionManager.getSessionData(sessionId)
-                .map(data -> String.format("Session %s - State: %s, Data: %s",
-                    sessionId, session.getCurrentStateId(), data.toString())))
-            .switchIfEmpty(Mono.just("Session not found"))
-            .onErrorResume(e -> Mono.just("Error: " + e.getMessage()));
+                .flatMap(session -> sessionManager.getSessionData(sessionId)
+                        .map(data -> String.format("Session %s - State: %s, Data: %s",
+                                sessionId, session.getCurrentStateId(), data.toString())))
+                .switchIfEmpty(Mono.just("Session not found"))
+                .onErrorResume(e -> Mono.just("Error: " + e.getMessage()));
     }
 
     // ========== UTILITIES ==========

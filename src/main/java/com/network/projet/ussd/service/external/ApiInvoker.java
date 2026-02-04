@@ -6,14 +6,16 @@ import com.network.projet.ussd.domain.model.automaton.Action;
 import com.network.projet.ussd.domain.model.automaton.ApiConfig;
 import com.network.projet.ussd.dto.ExternalApiResponse;
 import com.network.projet.ussd.util.TemplateEngine;
+import com.network.projet.ussd.domain.enums.AuthenticationType;
+import com.network.projet.ussd.domain.model.automaton.Authentication;
+import com.network.projet.ussd.exception.ApiCallException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import reactor.core.publisher.Mono;
 
@@ -21,12 +23,6 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeoutException;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.network.projet.ussd.domain.enums.AuthenticationType;
-import com.network.projet.ussd.domain.model.automaton.Authentication;
-import com.network.projet.ussd.exception.ApiCallException;
 
 /**
  * ApiInvoker - Service d'invocation des API externes
@@ -418,40 +414,41 @@ public class ApiInvoker {
      * Extrait une valeur nested d'une Map (ex: "user.profile.name")
      */
     private Object extractNestedValue(Object data, String path) {
-    if (path == null || path.isEmpty()) {
-        return null;
-    }
-    
-    // ✅ Gérer le cas spécial "." pour retourner l'objet entier
-    if (".".equals(path)) {
-        return data;  // Retourne directement data (peut être Map ou List)
-    }
-    
-    String[] parts = path.split("\\.");
-    Object current = data;
-    
-    for (String part : parts) {
-        if (part.isEmpty()) continue;
-        
-        if (current instanceof Map) {
-            current = ((Map<?, ?>) current).get(part);
-        } else if (current instanceof List) {
-            try {
-                int index = Integer.parseInt(part);
-                List<?> list = (List<?>) current;
-                current = (index >= 0 && index < list.size()) ? list.get(index) : null;
-            } catch (NumberFormatException e) {
+        if (path == null || path.isEmpty()) {
+            return null;
+        }
+
+        // ✅ Gérer le cas spécial "." pour retourner l'objet entier
+        if (".".equals(path)) {
+            return data; // Retourne directement data (peut être Map ou List)
+        }
+
+        String[] parts = path.split("\\.");
+        Object current = data;
+
+        for (String part : parts) {
+            if (part.isEmpty())
+                continue;
+
+            if (current instanceof Map) {
+                current = ((Map<?, ?>) current).get(part);
+            } else if (current instanceof List) {
+                try {
+                    int index = Integer.parseInt(part);
+                    List<?> list = (List<?>) current;
+                    current = (index >= 0 && index < list.size()) ? list.get(index) : null;
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            } else {
                 return null;
             }
-        } else {
-            return null;
+
+            if (current == null) {
+                return null;
+            }
         }
-        
-        if (current == null) {
-            return null;
-        }
+
+        return current;
     }
-    
-    return current;
-}
 }

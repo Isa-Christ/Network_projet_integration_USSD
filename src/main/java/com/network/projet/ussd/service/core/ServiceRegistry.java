@@ -18,56 +18,68 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 public class ServiceRegistry {
-    
+
     private final UssdServiceRepository serviceRepository;
     private final ObjectMapper objectMapper;
-    
+
     private final Map<String, AutomatonDefinition> automatonCache = new ConcurrentHashMap<>();
-    
+
     /**
      * Load automaton for a service (with caching)
+     * 
      * @param code Technical service code (e.g. "todo-manager")
      */
     public Mono<AutomatonDefinition> loadAutomaton(String code) {
-        if (automatonCache.containsKey(code)) {
-            return Mono.just(automatonCache.get(code));
-        }
-        
         return serviceRepository.findByCode(code)
-            .switchIfEmpty(Mono.error(new ServiceNotFoundException("Service not found: " + code)))
-            .map(service -> {
-                try {
-                    AutomatonDefinition automaton = objectMapper.readValue(
-                        service.getJsonConfig(), 
-                        AutomatonDefinition.class
-                    );
-                    automatonCache.put(code, automaton);
-                    return automaton;
-                } catch (Exception e) {
-                    log.error("Failed to parse automaton for service: {}", code, e);
-                    throw new RuntimeException("Invalid automaton JSON", e);
-                }
-            });
+                .switchIfEmpty(Mono.error(new ServiceNotFoundException("Service non trouvé: " + code)))
+                .flatMap(service -> {
+                    // Vérifier que le service est actif
+                    if (!Boolean.TRUE.equals(service.getIsActive())) {
+                        return Mono.error(new ServiceNotFoundException(
+                                "Le service '" + service.getName() + "' est actuellement bloqué."));
+                    }
+
+                    // Vérifier le cache
+                    if (automatonCache.containsKey(code)) {
+                        return Mono.just(automatonCache.get(code));
+                    }
+
+                    // Parser la configuration JSON
+                    try {
+                        AutomatonDefinition automaton = objectMapper.readValue(
+                                service.getJsonConfig(),
+                                AutomatonDefinition.class);
+                        automatonCache.put(code, automaton);
+                        return Mono.just(automaton);
+                    } catch (Exception e) {
+                        log.error("Failed to parse automaton for service: {}", code, e);
+                        return Mono
+                                .error(new RuntimeException("Configuration JSON invalide pour le service: " + code, e));
+                    }
+                });
     }
-    
+
     /**
      * Get service by USSD short code
+     * 
      * @param shortCode USSD code (e.g. "*500*1#")
      */
     public Mono<UssdService> getServiceByShortCode(String shortCode) {
         return serviceRepository.findByShortCode(shortCode)
-            .switchIfEmpty(Mono.error(new ServiceNotFoundException("Unknown shortCode: " + shortCode)));
+                .filter(service -> Boolean.TRUE.equals(service.getIsActive()))
+                .switchIfEmpty(Mono.error(new ServiceNotFoundException("Service inactif ou inconnu: " + shortCode)));
     }
-    
+
     /**
      * List all active services
      */
     public Flux<UssdService> getAllActiveServices() {
         return serviceRepository.findByIsActiveTrue();
     }
-    
+
     /**
      * Invalidate cache
+     * 
      * @param code Technical service code
      */
     public void invalidateCache(String code) {
