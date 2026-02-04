@@ -1,7 +1,7 @@
 /** * CONFIGURATION (Ta configuration originale)
  */
 const CONFIG = { 
-    API_URL: 'http://localhost:8080/api/ussd', // J'ai remis ton port 8080
+    API_URL: 'https://ussd-gateway.onrender.com/api/ussd', // J'ai remis ton port 8080
     TIMEOUT: 15000, // Un peu plus long pour être sûr
     PHONE_NUMBER: '237690123456' // Ton numéro de test
 };
