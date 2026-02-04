@@ -16,7 +16,8 @@ public class GlobalCorsConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000", 
-            "https://ussd-gateway.onrender.com"
+            "https://ussd-gateway.onrender.com",
+            "https://ussd-frontend-admin.onrender.com"
         ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("*"));
