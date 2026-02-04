@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # BASE DE DONNÉES PostgreSQL
+  # ========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ussd-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ussd_db # Nom aligné sur application.properties
+      POSTGRES_USER: ussd_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - ussd-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ussd_user -d ussd_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================================
+  # BACKEND SPRING BOOT
+  # ========================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ussd-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # === DATABASE CONFIGURATION (Surcharge application.properties) ===
+      # Configuration R2DBC (Reactive) - INDISPENSABLE pour surcharger localhost
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/ussd_db?sslMode=disable
+      SPRING_R2DBC_USERNAME: ussd_user
+      SPRING_R2DBC_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+
+      # Configuration Liquibase (JDBC) - INDISPENSABLE pour surcharger localhost
+      SPRING_LIQUIBASE_URL: jdbc:postgresql://postgres:5432/ussd_db
+      SPRING_LIQUIBASE_USER: ussd_user
+      SPRING_LIQUIBASE_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+
+      # Configuration Générique (JDBC standard)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ussd_db
+      SPRING_DATASOURCE_USERNAME: ussd_user
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+
+      # Spring configuration
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate # On laisse Liquibase gérer le schéma
+
+      # Application configuration
+      SERVER_PORT: 8080
+
+      # AI Generator (HuggingFace)
+      AI_GENERATOR_HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY}
+      AI_GENERATOR_HUGGINGFACE_BASE_URL: ${HUGGINGFACE_BASE_URL:-https://api-inference.huggingface.co/models}
+
+      # CORS (pour le frontend)
+      CORS_ALLOWED_ORIGINS: ${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ussd-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ========================================
+  # FRONTEND ADMIN (Next.js)
+  # ========================================
+  frontend:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    container_name: ussd-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Backend API URL
+      NEXT_PUBLIC_API_URL: ${BACKEND_URL:-http://localhost:8080}
+
+      # Next.js configuration
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      - backend
+    networks:
+      - ussd-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# ========================================
+# VOLUMES PERSISTANTS
+# ========================================
+volumes:
+  postgres_data:
+    driver: local
+
+# ========================================
+# RÉSEAUX
+# ========================================
+networks:
+  ussd-network:
+    driver: bridge
