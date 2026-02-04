@@ -26,9 +26,9 @@ import {
 
 const StepIndicator = ({ currentStep }: { currentStep: number }) => {
     const steps = [
-        { id: 1, label: "Analyser", icon: Search },
-        { id: 2, label: "Concevoir", icon: Sparkles },
-        { id: 3, label: "Générer", icon: Code },
+        { id: 1, label: "Analyze", icon: Search },
+        { id: 2, label: "Design", icon: Sparkles },
+        { id: 3, label: "Generate", icon: Code },
     ];
 
     return (
@@ -93,12 +93,12 @@ export default function AiWizardPage() {
                 setApiStructure(result.api_structure);
                 setStep(2);
             } else {
-                setError(result.error_message || "Erreur inconnue lors de l'analyse");
+                setError(result.error_message || "Unknown error during analysis");
             }
         } catch (err: any) {
             console.error("Analysis Error:", err);
             const backendMsg = err.response?.data?.error_message || err.response?.data?.message;
-            setError(backendMsg || err.message || "Erreur de connexion au serveur");
+            setError(backendMsg || err.message || "Server connection error");
         } finally {
             setLoading(false);
         }
@@ -116,7 +116,7 @@ export default function AiWizardPage() {
             setProposals(result);
             setStep(3);
         } catch (err: any) {
-            setError(err.message || "Erreur lors de la génération des propositions");
+            setError(err.message || "Error generating proposals");
         } finally {
             setLoading(false);
         }
@@ -139,7 +139,7 @@ export default function AiWizardPage() {
                 localStorage.setItem('generated_ussd_config', JSON.stringify(result.generated_config));
                 router.push('/dashboard/services/add?mode=generated');
             } else {
-                setError(result.error_message || "Erreur lors de la génération finale");
+                setError(result.error_message || "Error during final generation");
             }
         } catch (err: any) {
             setError(err.message);
@@ -165,9 +165,9 @@ export default function AiWizardPage() {
             {step === 1 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 animate-in fade-in slide-in-from-bottom-4">
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold text-slate-800">Analysez votre API</h2>
+                        <h2 className="text-2xl font-bold text-slate-800">Analyze your API</h2>
                         <p className="text-slate-500 mt-2">
-                            Entrez l'URL de votre documentation Swagger/OpenAPI pour commencer.
+                            Enter the URL of your Swagger/OpenAPI documentation to get started.
                         </p>
                     </div>
 
@@ -188,12 +188,12 @@ export default function AiWizardPage() {
                                 disabled={loading || !swaggerUrl}
                                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                             >
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Analyser"}
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Analyze"}
                             </button>
                         </div>
                         <p className="text-xs text-slate-400 mt-2 flex items-center">
                             <FileText className="w-3 h-3 mr-1" />
-                            Formats supportés: OpenAPI 3.0+, Swagger 2.0 (JSON)
+                            Supported formats: OpenAPI 3.0+, Swagger 2.0 (JSON)
                         </p>
                     </div>
                 </div>
@@ -204,12 +204,12 @@ export default function AiWizardPage() {
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 animate-in fade-in slide-in-from-bottom-4">
                     <div className="flex justify-between items-start mb-6">
                         <div>
-                            <h2 className="text-xl font-bold text-slate-800">Configuration du service</h2>
-                            <p className="text-slate-500 text-sm">Définissez vos attentes pour l'IA.</p>
+                            <h2 className="text-xl font-bold text-slate-800">Service Configuration</h2>
+                            <p className="text-slate-500 text-sm">Define your requirements for the AI.</p>
                         </div>
                         <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium flex items-center">
                             <CheckCircle className="w-3 h-3 mr-1" />
-                            {Object.keys(apiStructure.endpoints).length} endpoints détectés
+                            {Object.keys(apiStructure.endpoints).length} endpoints detected
                         </span>
                     </div>
 
@@ -218,7 +218,7 @@ export default function AiWizardPage() {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    Nom du service USSD *
+                                    USSD Service Name *
                                 </label>
                                 <input
                                     type="text"
@@ -231,16 +231,16 @@ export default function AiWizardPage() {
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    Instructions spécifiques pour l'IA
+                                    Specific Instructions for AI
                                 </label>
                                 <textarea
                                     className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none h-32 resize-none"
-                                    placeholder="Ex: Je veux un menu principal avec 3 options : Solde, Transfert, et Support. Le transfert doit demander un code PIN."
+                                    placeholder="Ex: I want a main menu with 3 options: Balance, Transfer, and Support. Transfer should ask for a PIN."
                                     value={confHints.custom_instructions}
                                     onChange={(e) => setConfHints({ ...confHints, custom_instructions: e.target.value })}
                                 />
                                 <p className="text-xs text-slate-400 mt-1">
-                                    Plus vous êtes précis, meilleur sera le résultat.
+                                    The more precise you are, the better the result will be.
                                 </p>
                             </div>
                         </div>
@@ -249,7 +249,7 @@ export default function AiWizardPage() {
                         <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                             <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
                                 <Search className="w-4 h-4 mr-2" />
-                                Endpoints disponibles
+                                Available Endpoints
                             </h3>
                             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                 {Object.values(apiStructure.endpoints).slice(0, 10).map((ep, idx) => (
@@ -266,13 +266,13 @@ export default function AiWizardPage() {
                                             <span className="font-mono text-slate-600 truncate">{ep.path}</span>
                                         </div>
                                         <p className="text-slate-500 truncate pl-1 border-l-2 border-slate-100">
-                                            {ep.summary || "Aucune description"}
+                                            {ep.summary || "No description"}
                                         </p>
                                     </div>
                                 ))}
                                 {Object.values(apiStructure.endpoints).length > 10 && (
                                     <p className="text-center text-xs text-slate-400 italic py-2">
-                                        + {Object.values(apiStructure.endpoints).length - 10} autres...
+                                        + {Object.values(apiStructure.endpoints).length - 10} more...
                                     </p>
                                 )}
                             </div>
@@ -284,7 +284,7 @@ export default function AiWizardPage() {
                             onClick={() => setStep(1)}
                             className="px-6 py-2 text-slate-600 hover:text-slate-900 font-medium transition-colors"
                         >
-                            Retour
+                            Back
                         </button>
                         <button
                             onClick={handleGenerateProposals}
@@ -294,12 +294,12 @@ export default function AiWizardPage() {
                             {loading ? (
                                 <>
                                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                    Réflexion en cours...
+                                    Thinking...
                                 </>
                             ) : (
                                 <>
                                     <Sparkles className="w-4 h-4 mr-2" />
-                                    Générer les propositions
+                                    Generate Proposals
                                 </>
                             )}
                         </button>
@@ -311,8 +311,8 @@ export default function AiWizardPage() {
             {step === 3 && proposals && (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 animate-in fade-in slide-in-from-bottom-4">
                     <div className="mb-6">
-                        <h2 className="text-xl font-bold text-slate-800">Choisir une architecture</h2>
-                        <p className="text-slate-500 text-sm">L'IA a généré {proposals.proposals.length} propositions.</p>
+                        <h2 className="text-xl font-bold text-slate-800">Choose an Architecture</h2>
+                        <p className="text-slate-500 text-sm">AI generated {proposals.proposals.length} proposals.</p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -338,7 +338,7 @@ export default function AiWizardPage() {
                                 </p>
                                 <div className="flex gap-2">
                                     <span className="text-xs bg-white border border-slate-200 px-2 py-1 rounded text-slate-500 font-medium">
-                                        {proposal.states.length} états
+                                        {proposal.states.length} states
                                     </span>
                                 </div>
                             </div>
@@ -347,12 +347,12 @@ export default function AiWizardPage() {
 
                     <div className="bg-slate-900 text-slate-300 p-6 rounded-xl font-mono text-sm overflow-x-auto mb-8 relative group">
                         <div className="absolute top-4 right-4 text-xs bg-slate-800 px-2 py-1 rounded opacity-50">
-                            Aperçu JSON
+                            JSON Preview
                         </div>
                         <pre className="custom-scrollbar max-h-60">
                             {JSON.stringify(proposals.proposals[selectedProposalIndex].states.slice(0, 2), null, 2)}
                             {'\n'}
-                            {proposals.proposals[selectedProposalIndex].states.length > 2 && "  ... (autres états)"}
+                            {proposals.proposals[selectedProposalIndex].states.length > 2 && "  ... (other states)"}
                         </pre>
                     </div>
 
@@ -361,7 +361,7 @@ export default function AiWizardPage() {
                             onClick={() => setStep(2)}
                             className="px-6 py-2 text-slate-600 hover:text-slate-900 font-medium transition-colors"
                         >
-                            Retour
+                            Back
                         </button>
                         <button
                             onClick={handleFinalGenerate}
@@ -371,12 +371,12 @@ export default function AiWizardPage() {
                             {loading ? (
                                 <>
                                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                    Construction du service...
+                                    Building service...
                                 </>
                             ) : (
                                 <>
-                                    <Save className="w-5 h-5 mr-2" />
-                                    Créer ce service
+                                    <Sparkles className="w-4 h-4 mr-2" />
+                                    Create this service
                                 </>
                             )}
                         </button>

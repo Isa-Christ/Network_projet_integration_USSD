@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import { getServices } from '@/lib/api';
 import { ServiceInfoResponse } from '@/types';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
 import { FiServer, FiPlusCircle, FiCheckCircle, FiXCircle, FiTrendingUp } from 'react-icons/fi';
+import Link from 'next/link';
 
 export default function DashboardPage() {
+    const { user } = useAuth();
     const [services, setServices] = useState<ServiceInfoResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -17,9 +20,9 @@ export default function DashboardPage() {
     const loadServices = async () => {
         try {
             const data = await getServices();
-            setServices(data);
+            setServices(data || []);
         } catch (error) {
-            toast.error('Erreur lors du chargement des services');
+            toast.error('Error loading services');
         } finally {
             setIsLoading(false);
         }
@@ -41,7 +44,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center font-medium">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-slate-600">Chargement des données...</p>
+                    <p className="text-slate-600">Loading data...</p>
                 </div>
             </div>
         );
@@ -49,19 +52,19 @@ export default function DashboardPage() {
 
     return (
         <div className="animate-fadeIn space-y-8">
-            {/* Bannière de bienvenue - Uniform Dark Blue */}
+            {/* Welcome Banner */}
             <div className="bg-primary-dark rounded-2xl p-8 text-white shadow-lg overflow-hidden relative">
                 <div className="relative z-10">
-                    <h1 className="text-3xl font-bold mb-2">Bienvenue sur le Dashboard</h1>
+                    <h1 className="text-3xl font-bold mb-2 uppercase tracking-tight">Hello, {user?.name || 'Administrator'}</h1>
                     <p className="text-slate-300 max-w-2xl text-lg">
-                        Gérez votre plateforme USSD efficacement et supervisez toutes les activités depuis cette interface centralisée.
+                        Manage your USSD platforms efficiently and supervise all activities from this centralized dashboard.
                     </p>
                 </div>
                 {/* Decorative element */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
             </div>
 
-            {/* Cartes de statistiques */}
+            {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Total Services */}
                 <div className="card-shadow-hover p-6">
@@ -72,7 +75,7 @@ export default function DashboardPage() {
                         <span className="text-3xl font-bold text-slate-800">{stats.total}</span>
                     </div>
                     <h3 className="text-slate-600 font-bold text-sm uppercase tracking-wider">Total Services</h3>
-                    <p className="text-xs text-slate-400 mt-2 font-medium">Services enregistrés sur la plateforme</p>
+                    <p className="text-xs text-slate-400 mt-2 font-medium">Services registered on the platform</p>
                 </div>
 
                 {/* Services Actifs */}
@@ -83,8 +86,8 @@ export default function DashboardPage() {
                         </div>
                         <span className="text-3xl font-bold text-slate-800">{stats.active}</span>
                     </div>
-                    <h3 className="text-slate-600 font-bold text-sm uppercase tracking-wider">Services Actifs</h3>
-                    <p className="text-xs text-slate-400 mt-2 font-medium">En cours de fonctionnement</p>
+                    <h3 className="text-slate-600 font-bold text-sm uppercase tracking-wider">Active Services</h3>
+                    <p className="text-xs text-slate-400 mt-2 font-medium">Currently running</p>
                 </div>
 
                 {/* Services Inactifs */}
@@ -95,8 +98,8 @@ export default function DashboardPage() {
                         </div>
                         <span className="text-3xl font-bold text-slate-800">{stats.inactive}</span>
                     </div>
-                    <h3 className="text-slate-600 font-bold text-sm uppercase tracking-wider">Services Inactifs</h3>
-                    <p className="text-xs text-slate-400 mt-2 font-medium">Actuellement désactivés</p>
+                    <h3 className="text-slate-600 font-bold text-sm uppercase tracking-wider">Inactive Services</h3>
+                    <p className="text-xs text-slate-400 mt-2 font-medium">Currently disabled</p>
                 </div>
 
                 {/* Ajoutés ce mois */}
@@ -107,18 +110,18 @@ export default function DashboardPage() {
                         </div>
                         <span className="text-3xl font-bold text-slate-800">{stats.thisMonth}</span>
                     </div>
-                    <h3 className="text-slate-600 font-bold text-sm uppercase tracking-wider">Nouveautés</h3>
-                    <p className="text-xs text-slate-400 mt-2 font-medium">Services ajoutés durant ce mois</p>
+                    <h3 className="text-slate-600 font-bold text-sm uppercase tracking-wider">Added This Month</h3>
+                    <p className="text-xs text-slate-400 mt-2 font-medium">Services created during this month</p>
                 </div>
             </div>
 
-            {/* Services récents */}
+            {/* Recent services */}
             <div className="card-shadow overflow-hidden">
                 <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <h2 className="text-lg font-bold text-slate-800">Services Récents</h2>
-                    <button className="text-sm font-bold text-primary hover:text-primary-light transition-colors">
-                        Voir tout
-                    </button>
+                    <h2 className="text-lg font-bold text-slate-800">Recent Services</h2>
+                    <Link href="/dashboard/services/list" className="text-sm font-bold text-primary hover:text-primary-light transition-colors">
+                        View All
+                    </Link>
                 </div>
 
                 {services.length === 0 ? (
@@ -126,23 +129,23 @@ export default function DashboardPage() {
                         <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                             <FiServer className="w-10 h-10 text-slate-300" />
                         </div>
-                        <p className="text-slate-500 font-semibold mb-2">Aucun service enregistré</p>
-                        <p className="text-sm text-slate-400 mb-6">Commencez par ajouter votre premier service USSD</p>
-                        <button className="btn-primary flex items-center gap-2 mx-auto">
+                        <p className="text-slate-500 font-semibold mb-2">No services found</p>
+                        <p className="text-sm text-slate-400 mb-6">Start by adding your first USSD service</p>
+                        <Link href="/dashboard/services/add" className="btn-primary flex items-center gap-2 mx-auto w-fit">
                             <FiPlusCircle className="w-5 h-5" />
-                            Ajouter un service
-                        </button>
+                            Add Service
+                        </Link>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">Nom du Service</th>
+                                    <th className="text-left py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">Service Name</th>
                                     <th className="text-left py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">Code</th>
                                     <th className="text-left py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">Short Code</th>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">Statut</th>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">Date de création</th>
+                                    <th className="text-left py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">Status</th>
+                                    <th className="text-left py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">Creation Date</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -163,17 +166,17 @@ export default function DashboardPage() {
                                             {service.isActive ? (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
                                                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                                                    Actif
+                                                    Active
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
                                                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
-                                                    Inactif
+                                                    Inactive
                                                 </span>
                                             )}
                                         </td>
                                         <td className="py-4 px-6 text-slate-500 text-sm font-medium">
-                                            {new Date(service.createdAt).toLocaleDateString('fr-FR', {
+                                            {new Date(service.createdAt).toLocaleDateString('en-US', {
                                                 day: 'numeric',
                                                 month: 'long',
                                                 year: 'numeric'

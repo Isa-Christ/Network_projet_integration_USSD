@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Administration USSD - Gestion des Services",
-  description: "Interface d'administration pour la gestion des services USSD modulaires",
+  title: "USSD Administration - Service Management",
+  description: "Administration interface for managing modular USSD services",
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="en">
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
           {children}

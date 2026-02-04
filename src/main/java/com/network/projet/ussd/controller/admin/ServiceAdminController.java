@@ -38,8 +38,10 @@ public class ServiceAdminController {
 	 */
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public Mono<ServiceInfoResponse> registerService(@RequestBody ServiceRegistrationRequest request) {
-		log.info("Registering new service from JSON config");
+	public Mono<ServiceInfoResponse> registerService(
+			@RequestBody ServiceRegistrationRequest request,
+			@RequestHeader(value = "X-Admin-Id", required = false) Long adminId) {
+		log.info("Registering new service from JSON config for admin: {}", adminId);
 
 		return Mono.fromCallable(() -> objectMapper.readValue(request.getJsonConfig(), AutomatonDefinition.class))
 				.flatMap(automaton -> serviceRepository.findByCode(automaton.getServiceCode())
@@ -56,6 +58,7 @@ public class ServiceAdminController {
 								.apiBaseUrl(
 										automaton.getApiConfig() != null ? automaton.getApiConfig().getBaseUrl() : null)
 								.isActive(true)
+								.adminId(adminId)
 								.createdAt(LocalDateTime.now())
 								.updatedAt(LocalDateTime.now())
 								.build()))
@@ -77,7 +80,11 @@ public class ServiceAdminController {
 	 * List all services
 	 */
 	@GetMapping
-	public Flux<ServiceInfoResponse> listServices() {
+	public Flux<ServiceInfoResponse> listServices(@RequestHeader(value = "X-Admin-Id", required = false) Long adminId) {
+		if (adminId != null) {
+			return serviceRepository.findByAdminId(adminId)
+					.map(this::toResponse);
+		}
 		return serviceRepository.findAll()
 				.map(this::toResponse);
 	}

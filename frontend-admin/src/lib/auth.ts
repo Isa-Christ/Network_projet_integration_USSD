@@ -1,4 +1,5 @@
 import type { User, LoginCredentials, RegisterCredentials } from '@/types';
+import { apiClient } from './api';
 
 /**
  * Sauvegarder le token d'authentification
@@ -63,61 +64,35 @@ export const isAuthenticated = (): boolean => {
 };
 
 /**
- * Connexion utilisateur (simulation pour le moment)
- * TODO: Remplacer par un vrai appel API quand le backend auth sera prêt
+ * Connexion utilisateur
  */
 export const login = async (credentials: LoginCredentials): Promise<User> => {
-    // Simulation d'une connexion
-    // Dans une vraie application, vous appelleriez votre API backend ici
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            // Validation basique
-            if (credentials.email && credentials.password) {
-                const user: User = {
-                    id: '1',
-                    email: credentials.email,
-                    name: 'Administrateur',
-                    token: 'mock-jwt-token-' + Date.now(),
-                };
-
-                saveToken(user.token!);
-                saveUser(user);
-                resolve(user);
-            } else {
-                reject(new Error('Email ou mot de passe invalide'));
-            }
-        }, 1000);
-    });
+    try {
+        const response = await apiClient.post('/api/auth/login', credentials);
+        const user: User = response.data;
+        saveToken(user.token!);
+        saveUser(user);
+        return user;
+    } catch (error: any) {
+        const message = error.response?.data?.message || 'Invalid email or password';
+        throw new Error(message);
+    }
 };
 
 /**
- * Inscription utilisateur (simulation pour le moment)
- * TODO: Remplacer par un vrai appel API quand le backend auth sera prêt
+ * Inscription utilisateur
  */
 export const register = async (credentials: RegisterCredentials): Promise<User> => {
-    // Simulation d'une inscription
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            if (
-                credentials.email &&
-                credentials.password &&
-                credentials.password === credentials.confirmPassword
-            ) {
-                const user: User = {
-                    id: '1',
-                    email: credentials.email,
-                    name: credentials.name,
-                    token: 'mock-jwt-token-' + Date.now(),
-                };
-
-                saveToken(user.token!);
-                saveUser(user);
-                resolve(user);
-            } else {
-                reject(new Error('Données invalides'));
-            }
-        }, 1000);
-    });
+    try {
+        const response = await apiClient.post('/api/auth/register', credentials);
+        const user: User = response.data;
+        saveToken(user.token!);
+        saveUser(user);
+        return user;
+    } catch (error: any) {
+        const message = error.response?.data?.message || 'Invalid registration data';
+        throw new Error(message);
+    }
 };
 
 /**

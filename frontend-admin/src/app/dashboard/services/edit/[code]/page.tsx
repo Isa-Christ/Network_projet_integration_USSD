@@ -33,7 +33,7 @@ export default function EditServicePage() {
                 setJsonConfig(data.jsonConfig);
             }
         } catch (error) {
-            toast.error('Erreur lors du chargement du service');
+            toast.error('Error loading service');
             console.error(error);
         } finally {
             setIsLoading(false);
@@ -64,9 +64,9 @@ export default function EditServicePage() {
             const formatted = JSON.stringify(parsed, null, 2);
             setJsonConfig(formatted);
             setIsValid(true);
-            toast.success('JSON formaté avec succès');
+            toast.success('JSON formatted successfully');
         } catch {
-            toast.error('JSON invalide, impossible de formater');
+            toast.error('Invalid JSON, cannot format');
         }
     };
 
@@ -74,12 +74,12 @@ export default function EditServicePage() {
         e.preventDefault();
 
         if (!jsonConfig.trim()) {
-            toast.error('Veuillez fournir une configuration JSON');
+            toast.error('Please provide a JSON configuration');
             return;
         }
 
         if (!isValid) {
-            toast.error('Le JSON est invalide');
+            toast.error('The JSON is invalid');
             return;
         }
 
@@ -87,10 +87,10 @@ export default function EditServicePage() {
 
         try {
             await updateService(code, { jsonConfig });
-            toast.success('Service mis à jour avec succès !', { id: 'edit-service-success' });
+            toast.success('Service updated successfully!', { id: 'edit-service-success' });
             router.push('/dashboard/services/list');
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la mise à jour du service';
+            const errorMessage = error.response?.data?.message || error.message || 'Error updating service';
             toast.error(errorMessage, { id: 'edit-service-error' });
         } finally {
             setIsSaving(false);
@@ -101,8 +101,8 @@ export default function EditServicePage() {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Chargement du service...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-slate-600 font-medium">Loading service...</p>
                 </div>
             </div>
         );
@@ -110,13 +110,13 @@ export default function EditServicePage() {
 
     if (!service) {
         return (
-            <div className="text-center py-12">
-                <p className="text-gray-600 mb-4">Service non trouvé</p>
+            <div className="text-center py-20 px-4">
+                <p className="text-slate-600 font-bold mb-4">Service not found</p>
                 <Link
                     href="/dashboard/services/list"
-                    className="text-blue-600 hover:underline"
+                    className="text-primary font-bold hover:underline"
                 >
-                    Retour à la liste
+                    Back to List
                 </Link>
             </div>
         );
@@ -127,42 +127,43 @@ export default function EditServicePage() {
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        Modifier le Service
-                    </h1>
-                    <p className="text-gray-600">
-                        Modification de <span className="font-semibold text-blue-600">{service.name}</span>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-1">
+                        Edit Service
+                    </h2>
+                    <p className="text-slate-500 text-sm">
+                        Editing <span className="font-bold text-primary">{service.name}</span>
                     </p>
                 </div>
                 <Link
                     href="/dashboard/services/list"
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-bold text-sm shadow-sm"
                 >
-                    <FiArrowLeft />
-                    <span>Retour</span>
+                    <FiArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
                 </Link>
             </div>
 
-            {/* Informations du service */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                <h3 className="font-semibold text-blue-900 mb-3">📋 Informations actuelles</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            {/* Service Information */}
+            <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 mb-8">
+                <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-4">📋 Current Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
                     <div>
-                        <span className="text-blue-700 font-medium">Code :</span>
-                        <span className="ml-2 text-blue-900">{service.code}</span>
+                        <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider mb-1">Code</span>
+                        <span className="text-slate-800 font-mono font-bold bg-white px-2 py-1 rounded border border-slate-100">{service.code}</span>
                     </div>
                     <div>
-                        <span className="text-blue-700 font-medium">Short Code :</span>
-                        <span className="ml-2 text-blue-900">{service.shortCode}</span>
+                        <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider mb-1">Short Code</span>
+                        <span className="text-slate-800 font-bold bg-white px-2 py-1 rounded border border-slate-100">{service.shortCode}</span>
                     </div>
                     <div>
-                        <span className="text-blue-700 font-medium">URL API :</span>
-                        <span className="ml-2 text-blue-900 truncate">{service.apiBaseUrl}</span>
+                        <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider mb-1">API URL</span>
+                        <div className="text-slate-800 font-medium truncate font-mono bg-white px-2 py-1 rounded border border-slate-100" title={service.apiBaseUrl}>{service.apiBaseUrl}</div>
                     </div>
                     <div>
-                        <span className="text-blue-700 font-medium">Statut :</span>
-                        <span className={`ml-2 ${service.isActive ? 'text-green-600' : 'text-orange-600'} font-semibold`}>
-                            {service.isActive ? 'Actif' : 'Inactif'}
+                        <span className="text-slate-500 font-bold block uppercase text-[10px] tracking-wider mb-1">Status</span>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${service.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${service.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                            {service.isActive ? 'Active' : 'Inactive'}
                         </span>
                     </div>
                 </div>
@@ -172,17 +173,17 @@ export default function EditServicePage() {
             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="block text-sm font-semibold text-gray-700">
-                                Nouvelle Configuration JSON
+                        <div className="flex items-center justify-between mb-4">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest px-1">
+                                New JSON Configuration
                             </label>
                             <button
                                 type="button"
                                 onClick={handleFormatJson}
-                                className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
+                                className="px-3 py-1.5 text-xs font-bold bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1.5"
                             >
-                                <FiCode className="inline mr-1" />
-                                Formater
+                                <FiCode className="w-3.5 h-3.5" />
+                                Format
                             </button>
                         </div>
 
@@ -193,36 +194,40 @@ export default function EditServicePage() {
                                 ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50'
                                 : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200'
                                 }`}
-                            placeholder='{\n  "serviceCode": "MY_SERVICE",\n  "serviceName": "Mon Service",\n  ...\n}'
+                            placeholder='{\n  "serviceCode": "MY_SERVICE",\n  "serviceName": "My Service",\n  ...\n}'
                         />
 
-                        {!isValid && jsonConfig.trim() && (
-                            <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                Le JSON n&apos;est pas valide
-                            </p>
-                        )}
+                        <div className="flex justify-end mt-3">
+                            {!isValid && jsonConfig.trim() && (
+                                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 text-red-600 text-[10px] font-bold uppercase tracking-wider animate-bounce">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Invalid JSON
+                                </span>
+                            )}
 
-                        {isValid && jsonConfig.trim() && (
-                            <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                                JSON valide
-                            </p>
-                        )}
+                            {isValid && jsonConfig.trim() && (
+                                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    Valid JSON
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex gap-4">
                         <button
                             type="submit"
                             disabled={isSaving || !isValid || !jsonConfig.trim()}
-                            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200"
+                            className="btn-primary w-full flex items-center justify-center gap-3 py-4 shadow-xl shadow-primary/20"
                         >
-                            <FiSave />
-                            {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                            <FiSave className="w-5 h-5" />
+                            <span className="text-lg">
+                                {isSaving ? 'Saving...' : 'Save Changes'}
+                            </span>
                         </button>
                     </div>
                 </form>
