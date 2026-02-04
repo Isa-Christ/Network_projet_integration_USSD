@@ -22,5 +22,4 @@ public class State {
     private List<Transition> transitions;
     private List<Action> preActions;   // Actions avant l'état
     private List<Action> postActions;  // Actions après l'état
-
 }

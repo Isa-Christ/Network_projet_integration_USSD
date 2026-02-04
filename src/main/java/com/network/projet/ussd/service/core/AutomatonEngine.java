@@ -34,10 +34,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * AutomatonEngine - Automaton execution engine with generic storage support
+ * AutomatonEngine - Moteur d'exécution de l'automate USSD
  * 
  * @author Network Projet Team
- * @version 3.0 - Refactored with conditional transitions support
+ * @version 3.1 - Strategic merge after git conflict
  */
 @Slf4j
 @Service
@@ -53,7 +53,7 @@ public class AutomatonEngine {
 	private final ObjectMapper objectMapper;
 
 	// ========================================================================
-	// MAIN EXECUTION FLOW
+	// FLUX D'EXÉCUTION PRINCIPAL
 	// ========================================================================
 
 	public Mono<StateResult> executeState(
@@ -138,7 +138,7 @@ public class AutomatonEngine {
 	}
 
 	// ========================================================================
-	// STORAGE OPERATIONS
+	// OPÉRATIONS DE STOCKAGE (DÉVELOPPEMENT)
 	// ========================================================================
 
 	private Mono<Void> executeStorageLoad(Action action, UssdSession session) {
@@ -204,7 +204,7 @@ public class AutomatonEngine {
 	}
 
 	// ========================================================================
-	// STATE EXECUTORS
+	// EXÉCUTEURS D'ÉTATS
 	// ========================================================================
 
 	private Mono<StateResult> executeMenuState(
@@ -227,7 +227,7 @@ public class AutomatonEngine {
 
 		return findMatchingTransition(currentState, userInput, sessionData)
 				.flatMap(transition -> {
-					// Store value if needed
+					// Stockage de valeur si nécessaire
 					if (transition.getValue() != null && currentState.getStoreAs() != null) {
 						return sessionManager.storeSessionData(
 								session.getSessionId(),
@@ -256,7 +256,7 @@ public class AutomatonEngine {
 
 		log.debug("Executing INPUT state: {}", currentState.getId());
 
-		// Check for special transitions (e.g., "99" to go back)
+		// Vérifier les transitions spéciales (ex: "99" pour retour)
 		return findMatchingTransition(currentState, userInput, sessionData)
 				.flatMap(transition -> navigateToState(session, automaton, transition.getNextState()))
 				.switchIfEmpty(Mono.defer(() -> validateAndProcessInput(
@@ -283,10 +283,9 @@ public class AutomatonEngine {
 
 		log.debug("Executing PROCESSING state: {}", currentState.getId());
 
-		// Check if this is an initial PROCESSING state (auth check)
 		Action action = currentState.getAction();
 
-		// If no action defined, use conditional transitions
+		// Si aucune action n'est définie, utiliser les transitions conditionnelles
 		if (action == null) {
 			log.debug("No action defined - checking conditional transitions");
 			return findMatchingTransition(currentState, userInput, sessionData)
@@ -295,7 +294,7 @@ public class AutomatonEngine {
 							"No matching transition for PROCESSING state: " + currentState.getId())));
 		}
 
-		// Execute the action if defined
+		// Exécuter l'action si elle est définie
 		return executeApiAction(action, session, automaton, sessionData)
 				.flatMap(actionResult -> handleActionResult(
 						automaton, session, currentState, actionResult, sessionData));
@@ -330,7 +329,7 @@ public class AutomatonEngine {
 	}
 
 	// ========================================================================
-	// TRANSITION HANDLING
+	// GESTION DES TRANSITIONS (PRIORITÉ IA - FUZZY MATCHING)
 	// ========================================================================
 
 	private Mono<Transition> findMatchingTransition(State state, String userInput, Map<String, Object> sessionData) {
@@ -344,7 +343,7 @@ public class AutomatonEngine {
 	}
 
 	private boolean matchesTransition(Transition transition, String userInput, Map<String, Object> sessionData) {
-		// Check input match (for MENU states)
+		// Vérification de la correspondance d'entrée (pour les menus)
 		if (transition.getInput() != null) {
 			String expected = transition.getInput().trim();
 			String actual = userInput.trim();
@@ -353,24 +352,24 @@ public class AutomatonEngine {
 			if (expected.equals(actual))
 				return true;
 
-			// Match fuzzy si l'IA a mis "1." ou "Option 1"
+			// Match fuzzy pour la robustesse (IA Generation)
 			if (expected.startsWith(actual + ".") || expected.endsWith(" " + actual))
 				return true;
 
 			return false;
 		}
 
-		// Check condition match (for PROCESSING states)
+		// Vérification de la condition (pour les PROCESSING)
 		if (transition.getCondition() != null) {
-			// Special conditions
+			// Conditions spéciales gérées séparément
 			if ("VALID".equals(transition.getCondition()) ||
 					"INVALID".equals(transition.getCondition()) ||
 					"SUCCESS".equals(transition.getCondition()) ||
 					"ERROR".equals(transition.getCondition())) {
-				return false; // These are handled separately
+				return false;
 			}
 
-			// Evaluate conditional expressions
+			// Évaluation des expressions conditionnelles
 			return conditionalEvaluator.evaluate(transition.getCondition(), sessionData);
 		}
 
@@ -378,7 +377,7 @@ public class AutomatonEngine {
 	}
 
 	// ========================================================================
-	// INPUT VALIDATION
+	// VALIDATION D'INPUT
 	// ========================================================================
 
 	private Mono<StateResult> validateAndProcessInput(
@@ -394,7 +393,7 @@ public class AutomatonEngine {
 			return storeAndNavigate(session, automaton, currentState, userInput);
 		}
 
-		// FIX : Passer minLength et maxLength
+		// Passer minLength et maxLength (Robustesse Develop)
 		return validationService.validate(
 				userInput,
 				rule.getType(),
@@ -430,10 +429,10 @@ public class AutomatonEngine {
 
 					log.debug(">>> Found VALID transition to state: {}", validTransition.getNextState());
 
-					// UPDATE CURRENT STATE IN SESSION
+					// MISE À JOUR DE L'ÉTAT DANS LA SESSION
 					reloadedSession.setCurrentStateId(validTransition.getNextState());
 
-					return sessionManager.updateSession(reloadedSession) // SAVE TO DB
+					return sessionManager.updateSession(reloadedSession) // SAUVEGARDE EN BASE
 							.then(navigateToNextState(reloadedSession, automaton, validTransition.getNextState()));
 				})
 				.doOnSuccess(result -> log.debug(">>> Navigation completed to state: {}", result.getNextStateId()));
@@ -463,7 +462,7 @@ public class AutomatonEngine {
 	}
 
 	// ========================================================================
-	// API EXECUTION
+	// EXÉCUTION D'API (DÉVELOPPEMENT - SUPPORT LISTES/OBJETS)
 	// ========================================================================
 
 	private Mono<Void> executeApiCallAction(Action action, UssdSession session, AutomatonDefinition automaton,
@@ -519,13 +518,9 @@ public class AutomatonEngine {
 							? action.getOnError().getNextState()
 							: null;
 
-					// Extraire le vrai message d'erreur de l'API
 					String errorMessage = extractErrorMessage(error, action);
-
-					// Stocker le message d'erreur dans sessionData pour l'afficher
 					sessionData.put("apiErrorMessage", errorMessage);
 
-					// Mettre à jour l'état courant de la session si une transition est définie
 					if (nextStateId != null) {
 						session.setCurrentStateId(nextStateId);
 					}
@@ -543,23 +538,18 @@ public class AutomatonEngine {
 	private String extractErrorMessage(Throwable error, Action action) {
 		if (error instanceof ApiCallException apiEx) {
 			try {
-				// Parser le JSON d'erreur
 				JsonNode errorJson = objectMapper.readTree(apiEx.getResponseBody());
-
-				// Essayer plusieurs champs courants pour le message
-				if (errorJson.has("error")) {
+				if (errorJson.has("error"))
 					return errorJson.get("error").asText();
-				} else if (errorJson.has("message")) {
+				else if (errorJson.has("message"))
 					return errorJson.get("message").asText();
-				} else if (errorJson.has("msg")) {
+				else if (errorJson.has("msg"))
 					return errorJson.get("msg").asText();
-				}
 			} catch (Exception e) {
 				log.warn("Could not parse API error response", e);
 			}
 		}
 
-		// Fallback sur le message par défaut ou le message de l'exception
 		return action.getOnError() != null && action.getOnError().getMessage() != null
 				? action.getOnError().getMessage()
 				: error.getMessage();
@@ -572,7 +562,6 @@ public class AutomatonEngine {
 			ActionResult actionResult,
 			Map<String, Object> sessionData) {
 
-		// Use explicit nextState from action result
 		if (actionResult.getNextState() != null) {
 			if (!actionResult.isSuccess() && actionResult.getErrorMessage() != null) {
 				return navigateToStateWithMessage(session, automaton,
@@ -581,7 +570,6 @@ public class AutomatonEngine {
 			return navigateToState(session, automaton, actionResult.getNextState());
 		}
 
-		// Fallback to transition conditions
 		return findTransitionByActionResult(currentState, actionResult, sessionData)
 				.flatMap(transition -> navigateToState(session, automaton, transition.getNextState()))
 				.switchIfEmpty(Mono.just(StateResult.builder()
@@ -635,10 +623,8 @@ public class AutomatonEngine {
 		return sessionManager.getSessionData(session.getSessionId())
 				.flatMap(sessionData -> {
 					session.setCurrentStateId(nextStateId);
-
 					log.debug(">>> Session updated in memory: currentState={}", session.getCurrentStateId());
 
-					// Auto-execute PROCESSING states
 					if (type == StateType.PROCESSING) {
 						log.debug("Auto-executing PROCESSING state: {}", nextStateId);
 						return executeProcessingState(automaton, session, nextState, "", sessionData);
@@ -674,7 +660,7 @@ public class AutomatonEngine {
 	}
 
 	// ========================================================================
-	// API RESPONSE HANDLING
+	// GESTION DES RÉPONSES API (SUPPORT LISTES)
 	// ========================================================================
 
 	private Mono<Map<String, Object>> storeApiResponseData(
@@ -684,7 +670,7 @@ public class AutomatonEngine {
 			Map<String, Object> collectedData) {
 
 		Map<String, Object> mergedData = new HashMap<>(collectedData);
-		Map<String, Object> extracted = extractResponseData(apiResponse);
+		Object responseData = apiResponse.getData();
 
 		if (action.getOnSuccess() != null) {
 			Map<String, String> responseMapping = action.getOnSuccess().getResponseMapping();
@@ -693,7 +679,13 @@ public class AutomatonEngine {
 				Map<String, Object> dataToStore = new HashMap<>();
 
 				responseMapping.forEach((targetKey, sourcePath) -> {
-					Object value = extractNestedValue(extracted, sourcePath);
+					Object value = null;
+					if (".".equals(sourcePath)) {
+						value = responseData;
+					} else {
+						value = extractNestedValue(responseData, sourcePath);
+					}
+
 					if (value != null) {
 						dataToStore.put(targetKey, value);
 						mergedData.put(targetKey, value);
@@ -704,34 +696,30 @@ public class AutomatonEngine {
 						.thenReturn(mergedData);
 			}
 
-			mergedData.putAll(extracted);
+			if (responseData instanceof Map) {
+				mergedData.putAll((Map<String, Object>) responseData);
+			}
 		}
 
 		return Mono.just(mergedData);
 	}
 
-	private Map<String, Object> extractResponseData(ExternalApiResponse response) {
-		Map<String, Object> extracted = new HashMap<>();
-		Object data = response.getData();
-
-		if (data instanceof Map) {
-			extracted.putAll((Map<String, Object>) data);
-		} else if (data instanceof List) {
-			extracted.put("data", data);
+	private Object extractNestedValue(Object data, String path) {
+		if (path == null || path.isEmpty() || data == null) {
+			return null;
 		}
 
-		return extracted;
-	}
-
-	private Object extractNestedValue(Map<String, Object> data, String path) {
-		if (path == null || path.isEmpty()) {
-			return null;
+		if (".".equals(path)) {
+			return data;
 		}
 
 		String[] parts = path.split("\\.");
 		Object current = data;
 
 		for (String part : parts) {
+			if (part.isEmpty())
+				continue;
+
 			if (current instanceof Map) {
 				current = ((Map<?, ?>) current).get(part);
 			} else if (current instanceof List) {
@@ -754,7 +742,7 @@ public class AutomatonEngine {
 	}
 
 	// ========================================================================
-	// UTILITY METHODS
+	// MÉTHODES UTILITAIRES
 	// ========================================================================
 
 	@SuppressWarnings("unchecked")

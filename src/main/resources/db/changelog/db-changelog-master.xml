@@ -8,6 +8,6 @@
     <include file="db/changelog/changelog-001-create-ussd-services.xml"/>
     <include file="db/changelog/changelog-002-create-ussd-sessions.xml"/>
     <include file="db/changelog/changelog-003-create-ai-generation.xml"/>
-    <include file="db/changelog/changelog-005-create-generic-storage.xml"/>
+    <include file="db/changelog/changelog-004-create-generic-storage.xml"/>
     <include file="db/changelog/changes/20260203-01-create-admins.xml"/>
 </databaseChangeLog>

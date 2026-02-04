@@ -244,5 +244,9 @@ public class HandlebarsTemplateEngine {
             }
             return str.substring(0, length - 3) + "...";
         });
+
+        handlebars.registerHelper("add", (context, options) -> {
+    return ((Number) context).intValue() + ((Number) options.param(0)).intValue();
+});
     }
 }

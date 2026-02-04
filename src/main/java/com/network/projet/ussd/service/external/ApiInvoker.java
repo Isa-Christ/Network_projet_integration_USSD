@@ -6,24 +6,23 @@ import com.network.projet.ussd.domain.model.automaton.Action;
 import com.network.projet.ussd.domain.model.automaton.ApiConfig;
 import com.network.projet.ussd.dto.ExternalApiResponse;
 import com.network.projet.ussd.util.TemplateEngine;
+import com.network.projet.ussd.domain.enums.AuthenticationType;
+import com.network.projet.ussd.domain.model.automaton.Authentication;
+import com.network.projet.ussd.exception.ApiCallException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeoutException;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.network.projet.ussd.exception.ApiCallException;
 
 /**
  * ApiInvoker - Service d'invocation des API externes
@@ -90,7 +89,7 @@ public class ApiInvoker {
                     ? Duration.ofSeconds(apiConfig.getTimeout())
                     : DEFAULT_TIMEOUT;
 
-            log.debug("Built request: url={}, method={}, timeout={}s", url, method, timeout.getSeconds());
+            log.info("Built request: url={}, method={}, timeout={}s", url, method, timeout.getSeconds());
 
             // Exécution de la requête
             return executeRequest(url, method, requestBody, headers, timeout)
@@ -146,20 +145,19 @@ public class ApiInvoker {
         return requestSpec
                 .retrieve()
                 .onStatus(
-    status -> status.is4xxClientError(),
-    response -> {
-        log.error("Error calling external API [{} {}]: {}", method, url, response.statusCode());
-        return response.bodyToMono(String.class)
-            .flatMap(errorBody -> {
-                log.error("Error response body: {}", errorBody);
-                // Créer une exception personnalisée avec le body
-                return Mono.error(new ApiCallException(
-                    response.statusCode().value(),
-                    errorBody,
-                    url
-                ));
-            });
-    })
+                        status -> status.is4xxClientError(),
+                        response -> {
+                            log.error("Error calling external API [{} {}]: {}", method, url, response.statusCode());
+                            return response.bodyToMono(String.class)
+                                    .flatMap(errorBody -> {
+                                        log.error("Error response body: {}", errorBody);
+                                        // Créer une exception personnalisée avec le body
+                                        return Mono.error(new ApiCallException(
+                                                response.statusCode().value(),
+                                                errorBody,
+                                                url));
+                                    });
+                        })
                 .onStatus(
                         status -> status.is5xxServerError(),
                         response -> {
@@ -234,22 +232,55 @@ public class ApiInvoker {
 
         Map<String, String> headers = new HashMap<>();
 
-        // 1. Headers de la config API (si présents)
+        // 1. Headers de la config API
         if (apiConfig.getHeaders() != null) {
             apiConfig.getHeaders().forEach((key, value) -> headers.put(key, templateEngine.render(value, sessionData)));
         }
 
-        // 2. Headers de l'action (priorité plus haute)
+        // 2. Headers de l'action
         if (action.getHeaders() != null) {
             action.getHeaders().forEach((key, value) -> headers.put(key, templateEngine.render(value, sessionData)));
         }
 
-        // 3. Headers d'authentification (priorité maximale)
+        // 3. Headers d'authentification (PRIORITÉ MAXIMALE)
         if (apiConfig.getAuthentication() != null) {
-            Map<String, String> authHeaders = authenticationHandler.buildAuthHeaders(
-                    apiConfig.getAuthentication(),
-                    sessionData);
-            headers.putAll(authHeaders);
+            Authentication auth = apiConfig.getAuthentication();
+
+            // ⬇️⬇️⬇️ AJOUT DU SUPPORT BEARER AVEC TOKEN SESSION ⬇️⬇️⬇️
+            if (auth.getType() == AuthenticationType.BEARER) {
+                Map<String, String> credentials = auth.getCredentials();
+                String token = null;
+
+                // Vérifier si le token vient de la session
+                if (credentials != null && "SESSION".equals(credentials.get("tokenSource"))) {
+                    String sessionKey = (String) credentials.get("sessionKey");
+                    if (sessionData.containsKey(sessionKey)) {
+                        token = (String) sessionData.get(sessionKey);
+                        log.info("🔑 Using Bearer token from session key: {}", sessionKey);
+                    } else {
+                        log.warn("⚠️ Token key '{}' not found in sessionData. Available keys: {}",
+                                sessionKey, sessionData.keySet());
+                    }
+                } else if (credentials != null && credentials.containsKey("token")) {
+                    // Token fixe dans la config
+                    token = (String) credentials.get("token");
+                    log.info("🔑 Using Bearer token from config");
+                }
+
+                // Ajouter le header Authorization
+                if (token != null && !token.isEmpty()) {
+                    headers.put("Authorization", "Bearer " + token);
+                    log.info("✅ Authorization header added with Bearer token");
+                } else {
+                    log.warn("❌ No Bearer token available for authentication");
+                }
+            } else {
+                // Autres types d'auth (API_KEY, BASIC, etc.)
+                Map<String, String> authHeaders = authenticationHandler.buildAuthHeaders(auth, sessionData);
+                if (authHeaders != null) {
+                    headers.putAll(authHeaders);
+                }
+            }
         }
 
         log.debug("Built headers: {}", headers.keySet());
@@ -382,21 +413,38 @@ public class ApiInvoker {
     /**
      * Extrait une valeur nested d'une Map (ex: "user.profile.name")
      */
-    private Object extractNestedValue(Map<String, Object> data, String path) {
+    private Object extractNestedValue(Object data, String path) {
         if (path == null || path.isEmpty()) {
             return null;
+        }
+
+        // ✅ Gérer le cas spécial "." pour retourner l'objet entier
+        if (".".equals(path)) {
+            return data; // Retourne directement data (peut être Map ou List)
         }
 
         String[] parts = path.split("\\.");
         Object current = data;
 
         for (String part : parts) {
+            if (part.isEmpty())
+                continue;
+
             if (current instanceof Map) {
                 current = ((Map<?, ?>) current).get(part);
-                if (current == null) {
+            } else if (current instanceof List) {
+                try {
+                    int index = Integer.parseInt(part);
+                    List<?> list = (List<?>) current;
+                    current = (index >= 0 && index < list.size()) ? list.get(index) : null;
+                } catch (NumberFormatException e) {
                     return null;
                 }
             } else {
+                return null;
+            }
+
+            if (current == null) {
                 return null;
             }
         }

@@ -138,19 +138,41 @@
       "action": {
         "type": "API_CALL",
         "method": "GET",
-        "endpoint": "/tracking/{{trackingNumber}}",
+        "endpoint": "/packages/tracking/{{trackingNumber}}",
         "onSuccess": {
           "nextState": "72",
           "responseMapping": {
-            "packageStatus": "status",
-            "currentLocation": "currentLocation"
+            "trackingNum": "package.trackingNumber",
+            "currentStatus": "package.currentStatus",
+            "recipientName": "package.recipientName",
+            "recipientAddress": "package.deliveryAddress",
+            "weight": "package.weight",
+            "deliveryFee": "package.deliveryFee",
+            "description": "package.description",
+            "packageType": "package.packageType",
+            "paymentStatus": "package.paymentStatus",
+            "estimatedDelivery": "package.estimatedDeliveryDate",
+            "lastUpdate": "package.updatedAt",
+            "lastHistoryStatus": "history.0.status",
+            "lastHistoryLocation": "history.0.location",
+            "lastHistoryDate": "history.0.createdAt"
           }
         },
         "onError": {
           "nextState": "73",
           "message": "Colis introuvable"
         }
-      }
+      },
+      "transitions": [
+        {
+          "condition": "SUCCESS",
+          "nextState": "72"
+        },
+        {
+          "condition": "ERROR",
+          "nextState": "73"
+        }
+      ]
     },
     {
       "id": "48",
@@ -575,13 +597,17 @@
     },
     {
       "id": "72",
-      "name": "DisplayPackageStatus",
+      "name": "DisplayTrackingInfo",
       "type": "DISPLAY",
-      "message": "Statut: {{packageStatus}}\nLocalisation: {{currentLocation}}\n\n99. Menu",
+      "message": "SUIVI COLIS\n{{trackingNum}}\n\nStatut: {{currentStatus}}\nDestination: {{recipientName}}\n{{recipientAddress}}\n\nPoids: {{weight}} kg\nFrais: {{deliveryFee}} FCFA\n\nDernier evt:\n{{lastHistoryLocation}}\n{{lastHistoryDate}}\n\n1. Actualiser\n99. Menu",
       "transitions": [
         {
+          "input": "1",
+          "nextState": "45"
+        },
+        {
           "input": "99",
-          "nextState": "2"
+          "nextState": "1"
         }
       ]
     },
@@ -773,6 +799,13 @@
       "name": "MyPackagesAPI",
       "type": "PROCESSING",
       "message": "Chargement de vos colis...",
+      "preActions": [
+        {
+          "type": "STORAGE_LOAD",
+          "storageKey": "auth_token",
+          "storeAs": "authToken"
+        }
+      ],
       "action": {
         "type": "API_CALL",
         "method": "GET",
@@ -780,20 +813,36 @@
         "onSuccess": {
           "nextState": "81",
           "responseMapping": {
-            "packagesList": "packages"
+            "packages": "."
           }
         },
         "onError": {
           "nextState": "82",
-          "message": "Erreur chargement"
+          "message": "Erreur de chargement"
         }
-      }
+      },
+      "transitions": [
+        {
+          "condition": "SUCCESS",
+          "nextState": "81"
+        },
+        {
+          "condition": "ERROR",
+          "nextState": "82"
+        }
+      ]
     },
     {
       "id": "81",
       "name": "DisplayMyPackages",
-      "type": "DISPLAY",
-      "message": "Vos colis:\n{{packagesList}}\n\n99. Retour",
+      "type": "INPUT",
+      "message": "MES COLIS ({{packages.length}} colis)\n\n{{#each packages}}{{add @index 1}}. Colis {{trackingNumber}}\nDestinataire: {{recipientName}}\n\n{{/each}}\n99. Retour",
+      "validation": {
+        "type": "NUMERIC",
+        "min": 1,
+        "max": 100
+      },
+      "storeAs": "selectedIndex",
       "transitions": [
         {
           "input": "99",
@@ -805,7 +854,7 @@
       "id": "82",
       "name": "MyPackagesError",
       "type": "DISPLAY",
-      "message": "Impossible de charger vos colis.\n99. Retour",
+      "message": "Erreur chargement colis\n\n99. Retour",
       "transitions": [
         {
           "input": "99",
