@@ -15,6 +15,10 @@ RUN npm ci
 # Copier tout le code source
 COPY . .
 
+# Arguments de build (passés par Render)
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Build de production Next.js
 RUN npm run build
 
