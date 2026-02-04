@@ -327,3 +327,68 @@ body {
 .toast.show {
   opacity: 1;
 }
+
+/* --- SECTION CONFIGURATION --- */
+
+.settings-trigger {
+    position: absolute;
+    top: 50px;
+    right: 20px;
+    z-index: 10;
+    color: #333;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.8);
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.ussd-modal-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none; /* Caché par défaut */
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.ussd-modal-overlay.active {
+    display: flex;
+    border-radius: 50px;
+}
+
+.settings-box {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    width: 85%;
+    box-sizing: border-box;
+}
+
+.settings-box h3 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.settings-box label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.settings-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: 'Roboto Mono', monospace;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+}

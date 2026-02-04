@@ -1,24 +1,28 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>USSD Simulator Pro</title>
     <!-- Google Fonts pour un look moderne -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <!-- Icones pour le téléphone -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <!-- Coque du téléphone -->
     <div class="phone-case">
         <div class="notch"></div>
-        
+
         <!-- Écran -->
         <div class="phone-screen">
-            
+
             <!-- Barre d'état -->
             <div class="status-bar">
                 <span>09:41</span>
@@ -40,19 +44,19 @@
                 <button class="key-btn" onclick="typeNumber('1')">1</button>
                 <button class="key-btn" onclick="typeNumber('2')">2<div class="key-sub">ABC</div></button>
                 <button class="key-btn" onclick="typeNumber('3')">3<div class="key-sub">DEF</div></button>
-                
+
                 <button class="key-btn" onclick="typeNumber('4')">4<div class="key-sub">GHI</div></button>
                 <button class="key-btn" onclick="typeNumber('5')">5<div class="key-sub">JKL</div></button>
                 <button class="key-btn" onclick="typeNumber('6')">6<div class="key-sub">MNO</div></button>
-                
+
                 <button class="key-btn" onclick="typeNumber('7')">7<div class="key-sub">PQRS</div></button>
                 <button class="key-btn" onclick="typeNumber('8')">8<div class="key-sub">TUV</div></button>
                 <button class="key-btn" onclick="typeNumber('9')">9<div class="key-sub">WXYZ</div></button>
-                
+
                 <button class="key-btn special-key" onclick="typeNumber('*')">*</button>
                 <button class="key-btn" onclick="typeNumber('0')">0<div class="key-sub">+</div></button>
                 <button class="key-btn special-key" onclick="typeNumber('#')">#</button>
-                
+
                 <button class="key-btn" style="background: transparent; cursor: default;"></button> <!-- Spacer -->
                 <button class="key-btn call-btn" onclick="initiateUSSD()">
                     <i class="fas fa-phone"></i>
@@ -83,7 +87,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Boutons d'action -->
                     <div class="ussd-actions" id="ussd-buttons" style="display: none;">
                         <button class="ussd-btn" onclick="closeUssd()">Annuler</button>
@@ -97,9 +101,25 @@
             </div>
 
         </div>
+        <div class="settings-trigger" onclick="toggleSettings()">
+            <i class="fas fa-cog"></i>
+        </div>
+
+        <div id="settings-modal" class="ussd-modal-overlay">
+            <div class="ussd-box settings-box">
+                <h3>Configuration</h3>
+                <label>Numéro de téléphone :</label>
+                <input type="tel" id="config-phone" placeholder="Ex: 237690123456">
+                <div class="ussd-actions">
+                    <button class="ussd-btn" onclick="toggleSettings()">Annuler</button>
+                    <button class="ussd-btn" onclick="saveSettings()" style="font-weight: 600;">Enregistrer</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- LOGIQUE JAVASCRIPT -->
     <script src="script.js"></script>
 </body>
+
 </html>
