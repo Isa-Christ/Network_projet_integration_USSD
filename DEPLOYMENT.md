@@ -1,181 +1,113 @@
-# 🚀 Guide de Déploiement - USSD Gateway
+# 🚀 GUIDE DE DÉPLOIEMENT ULTIME - USSD GATEWAY
+**Plateforme : Render.com** | **Branche : `feature/develop-frontend-admin`**
 
-## 📋 Prérequis
-
-- Docker et Docker Compose installés
-- Compte GitHub (pour push du code)
-- Compte Render.com (gratuit)
-- Clé API HuggingFace (gratuite)
+Ce guide vous accompagne pas à pas pour mettre votre projet en ligne. Suivez l'ordre EXACT.
 
 ---
 
-## 🔧 **DÉPLOIEMENT LOCAL (Test)**
+## �️ PRÉPARATION (À faire une seule fois)
 
-### 1. Créer le fichier .env
-
-```bash
-cp .env.example .env
-```
-
-Puis éditez `.env` et remplissez vos vraies valeurs :
-- `POSTGRES_PASSWORD` : Un mot de passe fort
-- `HUGGINGFACE_API_KEY` : Votre clé API HuggingFace
-
-### 2. Build et lancement
-
-```bash
-docker-compose up --build
-```
-
-### 3. Accès aux services
-
-- **Backend + Simulateur Phone** : http://localhost:8080
-- **Frontend Admin** : http://localhost:3000
-- **Base de données** : localhost:5432
-
-### 4. Arrêter les services
-
-```bash
-docker-compose down
-```
+1. **Créer un compte sur [Render.com](https://render.com/)** (Login with GitHub recommandé).
+2. **Avoir votre clé HuggingFace** sous la main (commence par `hf_...`).
 
 ---
 
-## 🌐 **DÉPLOIEMENT EN LIGNE (Render.com)**
+## 💾 ÉTAPE 1 : LA BASE DE DONNÉES (PostgreSQL)
 
-### Étape 1 : Préparer le repository
+C'est la fondation. On commence par elle pour obtenir l'URL de connexion nécessaire au backend.
 
-1. Commiter tous les fichiers Docker :
-```bash
-git add .
-git commit -m "Add Docker configuration for deployment"
-git push origin main
-```
+1. Sur le **Dashboard Render**, cliquez sur **[New +]** → **PostgreSQL**.
+2. Remplissez le formulaire :
+   - **Name** : `ussd-db-prod` (ou ce que vous voulez)
+   - **Database** : `ussd_db` (⚠️ Important : doit correspondre à votre config)
+   - **User** : `ussd_user`
+   - **Region** : `Frankfurt (EU Central)` (Plus proche, plus rapide)
+   - **PostgreSQL Version** : `16`
+   - **Instance Type** : **Free**
+3. Cliquez sur **Create Database**.
 
-2. S'assurer que `.env` est dans `.gitignore` (déjà fait)
+🛑 **PAUSE ! Notez les informations "Internal Connection URL"**
+Une fois créée, Render vous affiche des infos. Cherchez **Internal Database URL**.
+Elle ressemble à : `postgres://ussd_user:A1b2C3d4...@dpg-cn...a.frankfurt-postgres.render.com/ussd_db`
+👉 **Copiez cette URL**, vous en aurez besoin à l'étape 2.
 
-### Étape 2 : Créer un compte Render.com
+---
 
-1. Aller sur https://render.com
-2. S'inscrire avec GitHub
-3. Autoriser l'accès à votre repository
+## ⚙️ ÉTAPE 2 : LE BACKEND (Spring Boot)
 
-### Étape 3 : Déployer la base de données
-
-1. Dashboard Render → **New** → **PostgreSQL**
-2. Nom : `ussd-postgres`
-3. Database : `ussd_gateway`
-4. User : `ussd_user`
-5. Région : Europe (West)
-6. Plan : **Free**
-7. Créer → **Noter l'URL de connexion interne**
-
-### Étape 4 : Déployer le Backend
-
-1. Dashboard Render → **New** → **Web Service**
-2. Connecter votre repo GitHub
-3. Configuration :
+1. Sur le Dashboard, cliquez sur **[New +]** → **Web Service**.
+2. Connectez votre compte GitHub et choisissez votre dépôt `Network_projet_integration_USSD`.
+3. Remplissez la configuration de base :
    - **Name** : `ussd-backend`
-   - **Region** : Europe (West)
-   - **Branch** : `main`
-   - **Root Directory** : `.` (racine)
-   - **Environment** : `Docker`
-   - **Dockerfile Path** : `Dockerfile`
-   - **Plan** : Free
+   - **Region** : `Frankfurt` (Même que la DB !)
+   - **Branch** : `feature/develop-frontend-admin` (⚠️ **TRÈS IMPORTANT**)
+   - **Root Directory** : `.` (laisser vide ou mettre un point)
+   - **Runtime** : **Docker**
+   - **Instance Type** : **Free**
 
-4. Variables d'environnement :
-   ```
-   SPRING_DATASOURCE_URL=jdbc:postgresql://[URL_INTERNE_POSTGRES]/ussd_gateway
-   SPRING_DATASOURCE_USERNAME=ussd_user
-   SPRING_DATASOURCE_PASSWORD=[MOT_DE_PASSE_POSTGRES]
-   SPRING_PROFILES_ACTIVE=prod
-   HUGGINGFACE_API_KEY=[VOTRE_CLE_HF]
-   CORS_ALLOWED_ORIGINS=https://ussd-frontend.onrender.com
-   ```
+4. **LES VARIABLES D'ENVIRONNEMENT** (Section "Environment Variables")
+   Cliquez sur "Add Environment Variable" pour chaque ligne ci-dessous :
 
-5. Créer le service
+   | Clé (Key) | Valeur (Value) | Description |
+   |-----------|----------------|-------------|
+   | `SPRING_PROFILES_ACTIVE` | `prod` | Active le mode production |
+   | `SERVER_PORT` | `8080` | Port d'écoute du backend |
+   | `SPRING_DATASOURCE_URL` | *(Collez l'URL Interne copiée à l'étape 1)* | Connexion à la BD |
+   | `SPRING_DATASOURCE_USERNAME` | `ussd_user` | Utilisateur BD |
+   | `SPRING_DATASOURCE_PASSWORD` | *(Le mot de passe de la BD Render)* | Mot de passe BD |
+   | `SPRING_R2DBC_URL` | *(Remplacez `postgres://` par `r2dbc:postgresql://` dans l'URL Interne)* | Connexion Réactive (Ex: `r2dbc:postgresql://...`) |
+   | `SPRING_LIQUIBASE_URL` | *(Re-collez l'URL Interne normale)* | Pour les migrations DB |
+   | `HUGGINGFACE_API_KEY` | `hf_VotreVraieCle...` | Votre clé pour l'IA |
+   | `CORS_ALLOWED_ORIGINS` | `*` | *(On mettra l'URL du frontend plus tard pour sécuriser)* |
 
-### Étape 5 : Déployer le Frontend Admin
+   > **Astuce R2DBC** : Prenez l'URL interne `postgres://...` et changez juste le début en `r2dbc:postgresql://...`.
 
-1. Dashboard Render → **New** → **Web Service**
-2. Même repository
+5. Cliquez sur **Create Web Service**.
+   ⏳ Le déploiement va prendre 5-10 minutes. 
+   Une fois fini, en haut à gauche, vous verrez l'URL : `https://ussd-backend-xxxx.onrender.com`
+   👉 **Copiez cette URL**, on en a besoin pour le frontend !
+
+---
+
+## 🖥️ ÉTAPE 3 : LE FRONTEND ADMIN (Next.js)
+
+1. Sur le Dashboard, cliquez sur **[New +]** → **Web Service**.
+2. Choisissez le **MÊME dépôt GitHub**.
 3. Configuration :
    - **Name** : `ussd-frontend`
-   - **Region** : Europe (West)
-   - **Branch** : `main`
-   - **Root Directory** : `frontend-admin`
-   - **Environment** : `Docker`
-   - **Dockerfile Path** : `frontend-admin/Dockerfile`
-   - **Plan** : Free
+   - **Region** : `Frankfurt`
+   - **Branch** : `feature/develop-frontend-admin` (⚠️ Toujours elle !)
+   - **Root Directory** : `frontend-admin` (⚠️ **IMPORTANT : dossier du frontend**)
+   - **Runtime** : **Docker**
+   - **Instance Type** : **Free**
 
-4. Variables d'environnement :
-   ```
-   NEXT_PUBLIC_API_URL=https://ussd-backend.onrender.com
-   NODE_ENV=production
-   ```
+4. **LES VARIABLES D'ENVIRONNEMENT** :
 
-5. Créer le service
+   | Clé (Key) | Valeur (Value) | Description |
+   |-----------|----------------|-------------|
+   | `NODE_ENV` | `production` | Mode optmisé |
+   | `NEXT_PUBLIC_API_URL` | *(Collez l'URL du Backend de l'étape 2)* | Ex: `https://ussd-backend-xyz.onrender.com` |
 
-### Étape 6 : Accéder à votre application
-
-Après le déploiement (5-10 minutes) :
-
-- **Backend + Phone Simulator** : `https://ussd-backend-xxxx.onrender.com`
-- **Admin Interface** : `https://ussd-frontend-xxxx.onrender.com`
+5. Cliquez sur **Create Web Service**.
+   ⏳ Attendez que ce soit "Live".
 
 ---
 
-## 🔍 **Vérification du déploiement**
+## � ÉTAPE 4 : SÉCURISATION FINALE (Optionnel mais recommandé)
 
-### Backend
-```bash
-curl https://ussd-backend-xxxx.onrender.com/actuator/health
-```
+Maintenant que le frontend existe, on va dire au backend de n'accepter que lui.
 
-### Frontend
-```bash
-curl https://ussd-frontend-xxxx.onrender.com/api/health
-```
-
----
-
-## 🛠️ **Commandes utiles**
-
-### Voir les logs en local
-```bash
-docker-compose logs -f
-docker-compose logs -f backend  # Seulement le backend
-docker-compose logs -f frontend # Seulement le frontend
-```
-
-### Rebuild un service spécifique
-```bash
-docker-compose up --build backend
-```
-
-### Nettoyer tout
-```bash
-docker-compose down -v  # Supprime aussi les volumes
-```
+1. Retournez sur votre service **Backend** (`ussd-backend`).
+2. Allez dans **Environment**.
+3. Modifiez `CORS_ALLOWED_ORIGINS`.
+4. Mettez l'URL de votre frontend (sans le slash à la fin).
+   Exemple : `https://ussd-frontend-dV4s.onrender.com`
+5. Sauvegardez (cela va redéployer le backend rapidement).
 
 ---
 
-## ⚠️ **Problèmes courants**
+## ✅ VÉRIFICATION
 
-### Le backend ne démarre pas
-- Vérifier la connexion PostgreSQL
-- Vérifier les logs : `docker-compose logs backend`
-
-### Le frontend ne se connecte pas au backend
-- Vérifier `NEXT_PUBLIC_API_URL` dans les variables d'environnement
-- Vérifier CORS dans le backend
-
-### Build échoue
-- Vérifier que Java 21 est bien dans le pom.xml
-- Vérifier que Node.js 20 est compatible
-
----
-
-## 📞 **Support**
-
-Pour toute question, consulter la documentation Render.com ou les logs Docker.
+1. Ouvrez l'URL de votre **Frontend**.
+2. Tentez de vous connecter ou de voir les services.
+3. Si vous voyez les données, **BRAVO ! C'EST EN LIGNE !** 🌍🚀
