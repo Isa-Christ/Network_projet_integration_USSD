@@ -399,3 +399,42 @@ body {
     border-color: #007AFF; /* Bleu iOS */
     box-shadow: 0 0 0 2px rgba(0,122,255,0.2);
 }
+
+/* --- RESPONSIVE : MODE PLEIN ÉCRAN SUR MOBILE --- */
+
+/* On cible les écrans de moins de 500px (largeur typique d'un téléphone) */
+@media screen and (max-width: 500px) {
+    body {
+        background-color: #fff; /* On enlève le fond gris/foncé */
+        display: block; /* On n'a plus besoin du centrage flex */
+        padding: 0;
+        margin: 0;
+    }
+
+    .phone-case {
+        width: 100vw;   /* Largeur totale de la fenêtre */
+        height: 100vh;  /* Hauteur totale de la fenêtre */
+        border: none;   /* On enlève la coque */
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+
+    .notch {
+        display: none; /* On cache l'encoche de l'iPhone sur mobile */
+    }
+
+    .phone-screen {
+        border-radius: 0; /* L'écran devient carré pour remplir tout le tel */
+        height: 100%;
+    }
+    
+    /* On ajuste un peu le clavier pour qu'il soit plus grand/confortable */
+    .keypad {
+        padding-bottom: 30px; 
+    }
+}
